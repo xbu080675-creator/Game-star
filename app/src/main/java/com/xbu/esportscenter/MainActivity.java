@@ -4,6 +4,12 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -22,6 +28,8 @@ public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView webView;
+    private final Handler hapticHandler = new Handler(Looper.getMainLooper());
+    private boolean bootHapticsScheduled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +91,14 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url != null && url.endsWith("/index.html")) {
+                    scheduleBootHaptics();
+                }
+            }
+
+            @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                 final boolean didCrash = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && detail.didCrash();
                 runOnUiThread(() -> {
@@ -102,6 +118,47 @@ public class MainActivity extends Activity {
         ));
 
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    private void scheduleBootHaptics() {
+        if (bootHapticsScheduled || !isSystemHapticsEnabled()) return;
+        bootHapticsScheduled = true;
+
+        // Three restrained pulses aligned with the visual boot sequence:
+        // wake -> core lock -> brand/system online.
+        hapticHandler.postDelayed(() -> pulse(12, 38), 450);
+        hapticHandler.postDelayed(() -> pulse(18, 58), 1920);
+        hapticHandler.postDelayed(() -> pulse(28, 78), 3090);
+    }
+
+    private boolean isSystemHapticsEnabled() {
+        try {
+            return Settings.System.getInt(
+                    getContentResolver(),
+                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
+                    1
+            ) == 1;
+        } catch (Throwable ignored) {
+            return true;
+        }
+    }
+
+    private void pulse(int durationMs, int amplitude) {
+        try {
+            Vibrator vibrator;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                VibratorManager manager = getSystemService(VibratorManager.class);
+                if (manager == null) return;
+                vibrator = manager.getDefaultVibrator();
+            } else {
+                vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            }
+
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private void hideSystemBars() {
@@ -180,6 +237,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        hapticHandler.removeCallbacksAndMessages(null);
         if (webView != null) {
             webView.destroy();
             webView = null;
