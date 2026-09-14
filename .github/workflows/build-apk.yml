@@ -114,7 +114,7 @@ jobs:
             exit 1
           fi
           if grep -R -Eqi 'Settings\.(Global|Secure|System)\.put|rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime' "$RM"; then
-            echo '0.4.11 REDMAGIC adapter must remain read-only and non-privileged' >&2
+            echo '0.4.12 REDMAGIC adapter must remain read-only and non-privileged' >&2
             exit 1
           fi
 
@@ -163,7 +163,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.11：后端 Phase 1 启动。加入平台无关 Capability Registry 与 Game Session 状态机，并在红魔上启用只读竞技键/游戏场景状态监听。前端保持冻结；本版本不新增 Shizuku 权限、不写系统设置、不执行 shell。"
+              "changelog": "0.4.12：REDMAGIC Entry 接管准备版。新增平台无关 GameEntryCoordinator，并把竞技键真实关闭→开启边沿转换成语义化入口请求；启动时只建立 baseline，避免伪触发。仍不写 Settings、不新增 Shizuku 权限、不执行 shell、不修改原红魔游戏空间行为。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -209,13 +209,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.11 启动后端 Phase 1：Core Session/Capability 地基 + REDMAGIC 只读入口状态监听；不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.12 新增 REDMAGIC 竞技键语义边沿与 Core GameEntryCoordinator；仍保持红魔 Adapter 只读，不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.11 启动后端 Phase 1：Core Session/Capability 地基 + REDMAGIC 只读入口状态监听；不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.12 新增 REDMAGIC 竞技键语义边沿与 Core GameEntryCoordinator；仍保持红魔 Adapter 只读，不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
