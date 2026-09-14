@@ -153,9 +153,6 @@ public final class GameStarBoxApplication extends Application {
         Integer previousSwitch = previousRedMagicSwitch;
         previousRedMagicSwitch = currentSwitch;
 
-        // REDMAGIC convention observed on current ROM: 0 = competitive/game-space switch ON.
-        // Only emit on a real non-zero -> 0 edge. App startup while already ON must not create
-        // a synthetic entry request.
         if (previousSwitch != null && previousSwitch != 0 && currentSwitch == 0) {
             gameEntry.request(
                     GameEntrySource.REDMAGIC_COMPETITIVE_SWITCH,
@@ -309,6 +306,8 @@ public final class GameStarBoxApplication extends Application {
                 GameCapabilityIds.FAN_CONTROL,
                 GameCapabilityIds.CHARGE_SEPARATION,
                 GameCapabilityIds.SHOULDER_MAPPING,
+                GameCapabilityIds.TOUCH_POLICY,
+                GameCapabilityIds.REFRESH_RATE,
                 GameCapabilityIds.SCREEN_RECORD
         };
         for (String id : ids) publishSemantic(id, state, detail);
