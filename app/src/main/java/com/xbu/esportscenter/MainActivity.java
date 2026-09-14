@@ -11,6 +11,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.Settings;
+import android.text.method.ScrollingMovementMethod;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -251,6 +252,7 @@ public class MainActivity extends Activity {
             detail.append("错误\n").append(state.error);
         }
         updateDetail.setText(detail.toString());
+        updateDetail.scrollTo(0, 0);
 
         updateSafety.setText(
                 "安装前强制校验   SHA-256  ·  包名  ·  versionCode  ·  固定签名\n" +
@@ -294,47 +296,47 @@ public class MainActivity extends Activity {
         if (updateOverlay != null) return;
 
         updateOverlay = new FrameLayout(this);
-        updateOverlay.setBackgroundColor(Color.argb(224, 2, 7, 11));
+        updateOverlay.setBackgroundColor(Color.argb(206, 2, 7, 11));
         updateOverlay.setClickable(true);
         updateOverlay.setFocusable(true);
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(28), dp(24), dp(28), dp(22));
+        panel.setPadding(dp(20), dp(17), dp(20), dp(16));
 
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(Color.rgb(10, 22, 31));
         bg.setStroke(dp(1), Color.rgb(70, 101, 121));
-        bg.setCornerRadius(dp(12));
+        bg.setCornerRadius(dp(10));
         panel.setBackground(bg);
-        panel.setElevation(dp(18));
+        panel.setElevation(dp(16));
 
         updateEyebrow = new TextView(this);
         updateEyebrow.setTextColor(Color.rgb(107, 172, 207));
-        updateEyebrow.setTextSize(10f);
-        updateEyebrow.setLetterSpacing(0.16f);
+        updateEyebrow.setTextSize(9f);
+        updateEyebrow.setLetterSpacing(0.15f);
         updateEyebrow.setTypeface(null, android.graphics.Typeface.BOLD);
 
         updateTitle = new TextView(this);
         updateTitle.setTextColor(Color.WHITE);
-        updateTitle.setTextSize(34f);
+        updateTitle.setTextSize(26f);
         updateTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        updateTitle.setPadding(0, dp(6), 0, 0);
+        updateTitle.setPadding(0, dp(3), 0, 0);
 
         updateStatus = new TextView(this);
         updateStatus.setTextColor(Color.rgb(207, 229, 242));
-        updateStatus.setTextSize(14f);
-        updateStatus.setPadding(0, dp(7), 0, 0);
+        updateStatus.setTextSize(12f);
+        updateStatus.setPadding(0, dp(4), 0, 0);
 
         updateMeta = new TextView(this);
         updateMeta.setTextColor(Color.rgb(117, 143, 160));
-        updateMeta.setTextSize(11f);
-        updateMeta.setPadding(0, dp(8), 0, 0);
+        updateMeta.setTextSize(9f);
+        updateMeta.setPadding(0, dp(5), 0, 0);
 
         LinearLayout progressRow = new LinearLayout(this);
         progressRow.setOrientation(LinearLayout.HORIZONTAL);
         progressRow.setGravity(Gravity.CENTER_VERTICAL);
-        progressRow.setPadding(0, dp(18), 0, 0);
+        progressRow.setPadding(0, dp(10), 0, 0);
 
         updateProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         updateProgress.setMax(100);
@@ -347,31 +349,34 @@ public class MainActivity extends Activity {
         updatePercent = new TextView(this);
         updatePercent.setText("0%");
         updatePercent.setTextColor(Color.rgb(215, 242, 250));
-        updatePercent.setTextSize(12f);
+        updatePercent.setTextSize(10f);
         updatePercent.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         updatePercent.setTypeface(null, android.graphics.Typeface.BOLD);
 
         LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(
-                0, dp(5), 1f
+                0, dp(4), 1f
         );
         LinearLayout.LayoutParams percentLp = new LinearLayout.LayoutParams(
-                dp(58), dp(28)
+                dp(48), dp(22)
         );
-        percentLp.setMargins(dp(14), 0, 0, 0);
+        percentLp.setMargins(dp(10), 0, 0, 0);
         progressRow.addView(updateProgress, progressLp);
         progressRow.addView(updatePercent, percentLp);
 
         updateDetail = new TextView(this);
         updateDetail.setTextColor(Color.rgb(157, 176, 188));
-        updateDetail.setTextSize(12f);
-        updateDetail.setLineSpacing(dp(2), 1.08f);
-        updateDetail.setPadding(0, dp(14), 0, 0);
+        updateDetail.setTextSize(10.5f);
+        updateDetail.setLineSpacing(dp(1), 1.04f);
+        updateDetail.setPadding(0, dp(8), dp(3), 0);
+        updateDetail.setVerticalScrollBarEnabled(true);
+        updateDetail.setMovementMethod(new ScrollingMovementMethod());
+        updateDetail.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         updateSafety = new TextView(this);
         updateSafety.setTextColor(Color.rgb(114, 171, 151));
-        updateSafety.setTextSize(10f);
-        updateSafety.setLineSpacing(dp(1), 1.05f);
-        updateSafety.setPadding(0, dp(14), 0, dp(18));
+        updateSafety.setTextSize(8.5f);
+        updateSafety.setLineSpacing(0, 1.02f);
+        updateSafety.setPadding(0, dp(8), 0, dp(10));
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -380,14 +385,14 @@ public class MainActivity extends Activity {
         updateLater = new Button(this);
         updateLater.setText("稍后");
         updateLater.setTextColor(Color.rgb(194, 209, 218));
-        updateLater.setTextSize(12f);
+        updateLater.setTextSize(11f);
         updateLater.setAllCaps(false);
         updateLater.setMinWidth(0);
         updateLater.setMinHeight(0);
         GradientDrawable laterBg = new GradientDrawable();
         laterBg.setColor(Color.rgb(17, 34, 45));
         laterBg.setStroke(dp(1), Color.rgb(55, 78, 93));
-        laterBg.setCornerRadius(dp(6));
+        laterBg.setCornerRadius(dp(5));
         updateLater.setBackground(laterBg);
         updateLater.setOnClickListener(v -> {
             emitHaptic("tick");
@@ -397,23 +402,23 @@ public class MainActivity extends Activity {
         updateAction = new Button(this);
         updateAction.setText("下载并安装");
         updateAction.setTextColor(Color.rgb(5, 16, 22));
-        updateAction.setTextSize(12f);
+        updateAction.setTextSize(11f);
         updateAction.setTypeface(null, android.graphics.Typeface.BOLD);
         updateAction.setAllCaps(false);
         updateAction.setMinWidth(0);
         updateAction.setMinHeight(0);
         GradientDrawable actionBg = new GradientDrawable();
         actionBg.setColor(Color.rgb(225, 246, 255));
-        actionBg.setCornerRadius(dp(6));
+        actionBg.setCornerRadius(dp(5));
         updateAction.setBackground(actionBg);
         updateAction.setOnClickListener(v -> {
             emitHaptic("click");
             if (updateManager != null) updateManager.downloadAndInstall();
         });
 
-        LinearLayout.LayoutParams laterLp = new LinearLayout.LayoutParams(dp(112), dp(42));
-        LinearLayout.LayoutParams actionLp = new LinearLayout.LayoutParams(dp(190), dp(42));
-        actionLp.setMargins(dp(10), 0, 0, 0);
+        LinearLayout.LayoutParams laterLp = new LinearLayout.LayoutParams(dp(94), dp(36));
+        LinearLayout.LayoutParams actionLp = new LinearLayout.LayoutParams(dp(164), dp(36));
+        actionLp.setMargins(dp(8), 0, 0, 0);
         actions.addView(updateLater, laterLp);
         actions.addView(updateAction, actionLp);
 
@@ -453,8 +458,8 @@ public class MainActivity extends Activity {
 
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         int screenHeight = getResources().getDisplayMetrics().heightPixels;
-        int panelWidth = Math.min(dp(760), Math.max(dp(520), screenWidth - dp(92)));
-        int panelHeight = Math.min(dp(500), Math.max(dp(360), screenHeight - dp(70)));
+        int panelWidth = Math.min(dp(520), Math.max(dp(420), screenWidth - dp(180)));
+        int panelHeight = Math.min(dp(320), Math.max(dp(272), screenHeight - dp(120)));
 
         FrameLayout.LayoutParams panelLp = new FrameLayout.LayoutParams(
                 panelWidth, panelHeight, Gravity.CENTER
