@@ -128,7 +128,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.6：主界面加入低音量 CC0 环境音乐 Spacelife #14；启动动画结束后淡入；系统页可关闭；来源、CC0 许可、固定 SHA-256 与构建校验已归档。"
+              "changelog": "0.4.7：重做原生 OTA 安装体验；新增主机风系统更新面板、下载进度与安全校验提示、错误恢复入口，并在未知来源安装授权返回后自动继续已发起的更新流程。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
