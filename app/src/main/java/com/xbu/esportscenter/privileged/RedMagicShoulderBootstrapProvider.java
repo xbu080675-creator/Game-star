@@ -23,6 +23,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREF_SHOULDER_CALIBRATED = "shoulder_calibrated_v1";
     private static final String PREF_SAR_MIGRATION_DONE = "shoulder_sar_migration_0427_v1";
     private static final String PREF_AWAKENING_MIGRATION_DONE = "hardware_awakening_migration_0427_v2";
+    private static final String PREF_MOTOR_MIGRATION_DONE = "hardware_motor_migration_0427_v3";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -33,6 +34,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         Application application = (Application) getContext().getApplicationContext();
         forceOneSarCalibrationAfterPrototype(application);
         forceOneHardwareAwakeningAfterPrototype(application);
+        forceOneMotorBackedAwakeningAfterPrototype(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -100,6 +102,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_AWAKENING_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time hardware awakening migration applied");
+    }
+
+    /**
+     * 0.4.27 Hardware Awakening initially used sub-bass WebAudio that could be mistaken for haptic
+     * feedback while the physical motor path remained unverified. Reset once more so an in-place
+     * upgrade necessarily exercises the new Vibrator/VibratorManager-backed motor path.
+     */
+    private static void forceOneMotorBackedAwakeningAfterPrototype(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_MOTOR_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_MOTOR_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time physical motor awakening migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
