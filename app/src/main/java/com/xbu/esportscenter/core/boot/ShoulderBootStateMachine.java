@@ -158,6 +158,19 @@ public final class ShoulderBootStateMachine {
         return snapshotLocked();
     }
 
+    /**
+     * Lifecycle-safe cancel: dropping the Activity must never count as a successful release.
+     */
+    public synchronized Snapshot cancelActivePresses() {
+        leftDown = false;
+        rightDown = false;
+        leftDownAt = 0L;
+        rightDownAt = 0L;
+        bothDownAt = 0L;
+        resetProgressLocked();
+        return snapshotLocked();
+    }
+
     public synchronized Snapshot startFastIgnition() {
         leftCalibrated = true;
         rightCalibrated = true;
