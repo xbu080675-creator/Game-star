@@ -3,29 +3,11 @@
     if (!window.GSBBoot) return;
 
     const bootEl = document.getElementById('boot');
-    const bootAudio = document.getElementById('bootAudio');
     let stopped = false;
     let polls = 0;
 
-    function playbackRateFor(state) {
-      const p = Math.max(0, Math.min(100, Number(state && state.overallProgress) || 0));
-      if (state && state.blockingReady) return 1.42;
-      if (p >= 88) return 1.24;
-      if (p >= 65) return 1.08;
-      if (p >= 50) return 0.96;
-      if (p >= 30) return 0.84;
-      return 0.72;
-    }
-
     function applyBootState(state) {
       if (!state || stopped) return;
-      const rate = playbackRateFor(state);
-      if (bootAudio) {
-        try {
-          bootAudio.defaultPlaybackRate = rate;
-          bootAudio.playbackRate = rate;
-        } catch (_) {}
-      }
       document.documentElement.dataset.gsbBootPhase = state.phase || 'UNKNOWN';
       document.documentElement.dataset.gsbBootProgress = String(state.overallProgress || 0);
       if (bootEl && bootEl.classList.contains('done')) stopped = true;
@@ -42,42 +24,64 @@
     readBootState();
     try { GSBBoot.webViewReady(); } catch (_) {}
 
+    // Boot state remains observable, but animation/audio time is no longer rewritten every poll.
+    // Repeated playbackRate changes caused visible frame pacing jitter on device.
     const timer = setInterval(() => {
       polls++;
       readBootState();
-      if (stopped || polls >= 28) clearInterval(timer);
-    }, 180);
+      if (stopped || polls >= 14) clearInterval(timer);
+    }, 320);
+  }
+
+  function injectScriptOnce(id, src) {
+    if (document.getElementById(id)) return;
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    document.head.appendChild(script);
+  }
+
+  function loadPostBootRuntime() {
+    if (window.__gsbPostBootRuntimeLoaded) return;
+    window.__gsbPostBootRuntimeLoaded = true;
+
+    const start = () => {
+      injectScriptOnce('gsb-game-library-js', 'game-library.js');
+      injectScriptOnce('gsb-session-runtime-js', 'session-runtime.js');
+      injectScriptOnce('gsb-quick-menu-runtime-js', 'quick-menu-runtime.js');
+      injectScriptOnce('gsb-menu-music-js', 'menu-music.js');
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(start, { timeout: 600 });
+    } else {
+      setTimeout(start, 80);
+    }
+  }
+
+  function deferRuntimeUntilBootEnds() {
+    const boot = document.getElementById('boot');
+    if (!boot || boot.classList.contains('done')) {
+      loadPostBootRuntime();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!boot.classList.contains('done')) return;
+      observer.disconnect();
+      loadPostBootRuntime();
+    });
+    observer.observe(boot, { attributes: true, attributeFilter: ['class'] });
+
+    // Fail-safe: runtime must still load if the visual layer fails to mark completion.
+    setTimeout(() => {
+      observer.disconnect();
+      loadPostBootRuntime();
+    }, 5200);
   }
 
   initBootRuntime();
-
-  if (!document.getElementById('gsb-game-library-js')) {
-    const gameScript = document.createElement('script');
-    gameScript.id = 'gsb-game-library-js';
-    gameScript.src = 'game-library.js';
-    document.head.appendChild(gameScript);
-  }
-
-  if (!document.getElementById('gsb-session-runtime-js')) {
-    const sessionScript = document.createElement('script');
-    sessionScript.id = 'gsb-session-runtime-js';
-    sessionScript.src = 'session-runtime.js';
-    document.head.appendChild(sessionScript);
-  }
-
-  if (!document.getElementById('gsb-quick-menu-runtime-js')) {
-    const quickScript = document.createElement('script');
-    quickScript.id = 'gsb-quick-menu-runtime-js';
-    quickScript.src = 'quick-menu-runtime.js';
-    document.head.appendChild(quickScript);
-  }
-
-  if (!document.getElementById('gsb-menu-music-js')) {
-    const musicScript = document.createElement('script');
-    musicScript.id = 'gsb-menu-music-js';
-    musicScript.src = 'menu-music.js';
-    document.head.appendChild(musicScript);
-  }
+  deferRuntimeUntilBootEnds();
 
   const panel = document.querySelector('.systemScene .rightPanel');
   if (!panel || document.getElementById('gsbUpdateSetting')) return;
