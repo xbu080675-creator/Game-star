@@ -5,7 +5,7 @@ import android.content.Context;
 import android.database.ContentObserver;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -16,6 +16,10 @@ import java.util.Locale;
  *
  * Security boundary: this class never writes Settings, never invokes Shizuku,
  * never executes shell commands and never launches arbitrary packages.
+ *
+ * Performance boundary: all Settings reads and downstream probe/audit callbacks run on a
+ * dedicated worker thread. Startup rendering must never compete with REDMAGIC discovery on the
+ * Android main/UI thread.
  */
 public final class RedMagicEntryMonitor implements AutoCloseable {
     public interface Listener {
@@ -32,20 +36,25 @@ public final class RedMagicEntryMonitor implements AutoCloseable {
     private final Context appContext;
     private final ContentResolver resolver;
     private final Listener listener;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final HandlerThread workerThread;
+    private final Handler workerHandler;
     private boolean registered;
 
-    private final ContentObserver observer = new ContentObserver(mainHandler) {
-        @Override
-        public void onChange(boolean selfChange) {
-            emitSnapshot();
-        }
-    };
+    private final ContentObserver observer;
 
     public RedMagicEntryMonitor(Context context, Listener listener) {
         this.appContext = context.getApplicationContext();
         this.resolver = appContext.getContentResolver();
         this.listener = listener;
+        this.workerThread = new HandlerThread("GSB-RedMagicProbe");
+        this.workerThread.start();
+        this.workerHandler = new Handler(workerThread.getLooper());
+        this.observer = new ContentObserver(workerHandler) {
+            @Override
+            public void onChange(boolean selfChange) {
+                emitSnapshot();
+            }
+        };
     }
 
     public synchronized void start() {
@@ -54,7 +63,7 @@ public final class RedMagicEntryMonitor implements AutoCloseable {
         resolver.registerContentObserver(Settings.Global.getUriFor(KEY_GAME_SCENE), false, observer);
         resolver.registerContentObserver(Settings.Global.getUriFor(KEY_GAME_MODE), false, observer);
         registered = true;
-        emitSnapshot();
+        workerHandler.post(this::emitSnapshot);
     }
 
     public RedMagicSnapshot readSnapshot() {
@@ -99,11 +108,14 @@ public final class RedMagicEntryMonitor implements AutoCloseable {
 
     @Override
     public synchronized void close() {
-        if (!registered) return;
-        try {
-            resolver.unregisterContentObserver(observer);
-        } finally {
-            registered = false;
+        if (registered) {
+            try {
+                resolver.unregisterContentObserver(observer);
+            } finally {
+                registered = false;
+            }
         }
+        workerHandler.removeCallbacksAndMessages(null);
+        workerThread.quitSafely();
     }
 }
