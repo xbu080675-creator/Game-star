@@ -61,3 +61,5 @@ dependencies {
     implementation "dev.rikka.shizuku:api:$shizukuVersion"
     implementation "dev.rikka.shizuku:provider:$shizukuVersion"
 }
+
+apply from: 'model-pipeline.gradle'
