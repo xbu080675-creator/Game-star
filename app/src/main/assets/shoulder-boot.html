@@ -53,14 +53,13 @@ body{display:grid;place-items:center}.root{position:fixed;inset:0;overflow:hidde
   const lf=document.getElementById('lf'),rf=document.getElementById('rf'),core=document.getElementById('core');
   const copy=document.getElementById('copy'),kicker=document.getElementById('kicker'),title=document.getElementById('title'),sub=document.getElementById('sub');
   const sys={CORE_RUNTIME:document.getElementById('sysCore'),GAME_CATALOG:document.getElementById('sysLibrary'),MAIN_SURFACE:document.getElementById('sysSurface')};
-  let lastPhase='',lastLevel=-1,ignitionStarted=false,audio=null,hum=null,humGain=null;
+  let lastPhase='',lastLevel=-1,ignitionStarted=false,audio=null;
   function bridge(){return window.GSBShoulderBoot||null}
   function ctx(){if(audio)return audio;try{audio=new(window.AudioContext||window.webkitAudioContext)();audio.resume()}catch(_){audio=null}return audio}
-  function tone(a,b,d,g=.035,type='sine'){const c=ctx();if(!c)return;const t=c.currentTime,o=c.createOscillator(),v=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,a),t);o.frequency.exponentialRampToValueAtTime(Math.max(1,b),t+d);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+.008);v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v).connect(c.destination);o.start(t);o.stop(t+d+.03)}
-  function click(side){tone(side==='L'?440:520,side==='L'?760:860,.08,.05,'triangle');tone(side==='L'?92:108,66,.12,.025)}
-  function lock(){tone(540,940,.12,.045,'sine');setTimeout(()=>tone(880,1320,.1,.03,'sine'),80)}
-  function startHum(level){const c=ctx();if(!c)return;stopHum();hum=c.createOscillator();humGain=c.createGain();hum.type='sawtooth';hum.frequency.value=48+level*11;humGain.gain.value=.006+level*.005;hum.connect(humGain).connect(c.destination);hum.start()}
-  function stopHum(){if(hum){try{humGain.gain.exponentialRampToValueAtTime(.0001,(audio?audio.currentTime:0)+.04);hum.stop((audio?audio.currentTime:0)+.05)}catch(_){}hum=null;humGain=null}}
+  function tone(a,b,d,g=.035,type='sine'){const c=ctx();if(!c)return;const t=c.currentTime,o=c.createOscillator(),v=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(180,a),t);o.frequency.exponentialRampToValueAtTime(Math.max(180,b),t+d);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+.008);v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v).connect(c.destination);o.start(t);o.stop(t+d+.03)}
+  function click(side){tone(side==='L'?440:520,side==='L'?760:860,.08,.045,'triangle')}
+  function lock(){tone(540,940,.12,.04,'sine');setTimeout(()=>tone(880,1320,.1,.028,'sine'),80)}
+  function levelCue(level){const base=260+Math.max(1,Math.min(4,level))*55;tone(base,base+90,.045,.018,'triangle')}
   function setText(k,t,s,sync=false){kicker.textContent=k;title.textContent=t;sub.textContent=s;copy.classList.toggle('sync',sync)}
   function setCharge(el,p){el.style.transform=`scaleX(${Math.max(0,Math.min(1,(p||0)/100))})`}
   function applyPhase(s){
@@ -82,10 +81,10 @@ body{display:grid;place-items:center}.root{position:fixed;inset:0;overflow:hidde
       if(s.phase==='ARMED')lock();
       lastPhase=s.phase;
     }
-    if(['LEFT_HOLD','RIGHT_HOLD','BOTH_HOLD'].includes(s.phase)&&s.level>0&&s.level!==lastLevel)startHum(s.level);else if(!['LEFT_HOLD','RIGHT_HOLD','BOTH_HOLD'].includes(s.phase))stopHum();
+    if(['LEFT_HOLD','RIGHT_HOLD','BOTH_HOLD'].includes(s.phase)&&s.level>0&&s.level!==lastLevel)levelCue(s.level);
     lastLevel=s.level;
   }
-  function beginIgnition(){if(ignitionStarted)return;ignitionStarted=true;stopHum();root.classList.remove('armed');root.classList.add('igniting');tone(58,31,.55,.08,'sawtooth');setTimeout(()=>tone(96,38,.48,.1,'sine'),300);setTimeout(()=>{root.classList.remove('igniting');root.classList.add('branding');tone(210,620,.24,.07,'triangle');tone(74,46,.3,.07,'sine')},1080);setTimeout(()=>{try{bridge()&&bridge().visualComplete()}catch(_){}},1820)}
+  function beginIgnition(){if(ignitionStarted)return;ignitionStarted=true;root.classList.remove('armed');root.classList.add('igniting');tone(320,220,.5,.045,'sawtooth');setTimeout(()=>tone(420,260,.4,.05,'sine'),300);setTimeout(()=>{root.classList.remove('igniting');root.classList.add('branding');tone(360,720,.24,.06,'triangle');tone(280,220,.24,.035,'sine')},1080);setTimeout(()=>{try{bridge()&&bridge().visualComplete()}catch(_){}},1820)}
   function touch(el,side){el.addEventListener('pointerdown',e=>{e.preventDefault();try{ctx();bridge()&&bridge().touch(side,true)}catch(_){}});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,e=>{e.preventDefault();try{bridge()&&bridge().touch(side,false)}catch(_){}}))}
   touch(document.getElementById('lt'),'LEFT');touch(document.getElementById('rt'),'RIGHT');
   window.onGSBShoulderState=applyPhase;
