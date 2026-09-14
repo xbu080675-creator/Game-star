@@ -17,6 +17,8 @@ jobs:
       GSB_DEV_STORE_PASSWORD: ${{ secrets.GSB_DEV_STORE_PASSWORD }}
       GSB_DEV_KEY_PASSWORD: ${{ secrets.GSB_DEV_KEY_PASSWORD }}
       GSB_DEV_KEY_ALIAS: ${{ secrets.GSB_DEV_KEY_ALIAS }}
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout
@@ -28,13 +30,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android 35 SDK
+      - name: Use runner Android SDK
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -60,6 +64,7 @@ jobs:
           MUSIC_URL='https://opengameart.org/sites/default/files/spacelifeNo14.ogg'
           MUSIC_SHA256='64ba0b12ee09c106bca11531010534df282f3474a88fb1923d55b3de469898d4'
           MUSIC_OUT='app/src/main/assets/menu_bgm.ogg'
+          mkdir -p app/src/main/assets
           curl -fL --retry 4 --retry-delay 2 --retry-all-errors "$MUSIC_URL" -o "$MUSIC_OUT"
           echo "$MUSIC_SHA256  $MUSIC_OUT" | sha256sum -c -
 
