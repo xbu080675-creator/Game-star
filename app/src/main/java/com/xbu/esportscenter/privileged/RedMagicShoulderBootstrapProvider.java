@@ -22,6 +22,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREFS_BOOT = "gsb.boot.profile";
     private static final String PREF_SHOULDER_CALIBRATED = "shoulder_calibrated_v1";
     private static final String PREF_SAR_MIGRATION_DONE = "shoulder_sar_migration_0427_v1";
+    private static final String PREF_AWAKENING_MIGRATION_DONE = "hardware_awakening_migration_0427_v2";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -31,6 +32,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         if (getContext() == null) return false;
         Application application = (Application) getContext().getApplicationContext();
         forceOneSarCalibrationAfterPrototype(application);
+        forceOneHardwareAwakeningAfterPrototype(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -83,6 +85,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_SAR_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time SAR calibration migration applied");
+    }
+
+    /**
+     * Users who already validated the SAR prototype must still see the redesigned Hardware
+     * Awakening exactly once. This is a presentation/provisioning migration, not a permission or
+     * REDMAGIC setting migration, and it never repeats after the first upgraded launch.
+     */
+    private static void forceOneHardwareAwakeningAfterPrototype(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_AWAKENING_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_AWAKENING_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time hardware awakening migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
