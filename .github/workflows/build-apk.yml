@@ -147,7 +147,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.8：接入受限 Shizuku 自更新通道。已验证的竞界 APK 可通过 shell 身份静默覆盖安装，不再弹 Android 系统安装器；仅允许 com.xbu.esportscenter，自更新失败或 Shizuku 不可用时安全回退系统安装器。"
+              "changelog": "0.4.9：修复启动音画不同步，启动视觉时间轴改由启动音频时钟驱动并取消 350ms 强制抢跑；原生更新面板缩成紧凑主机式卡片，减少遮挡，长更新内容可在卡片内滚动。继续保留 0.4.8 起的受限 Shizuku 自更新。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -194,13 +194,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.8 起支持受限 Shizuku 自更新：仅竞界自身可走静默覆盖安装；不可用时安全回退系统安装器。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.9 修复启动音画同步并压缩原生更新面板；0.4.8 起支持受限 Shizuku 自更新，仅竞界自身可走静默覆盖安装。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.8 起支持受限 Shizuku 自更新：仅竞界自身可走静默覆盖安装；不可用时安全回退系统安装器。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.9 修复启动音画同步并压缩原生更新面板；0.4.8 起支持受限 Shizuku 自更新，仅竞界自身可走静默覆盖安装。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
