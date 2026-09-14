@@ -8,9 +8,12 @@ import com.xbu.esportscenter.core.boot.BootOrchestrator;
 import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.capability.CapabilityAvailability;
 import com.xbu.esportscenter.core.capability.CapabilityRegistry;
+import com.xbu.esportscenter.core.capability.GameCapabilityIds;
 import com.xbu.esportscenter.core.entry.GameEntryCoordinator;
 import com.xbu.esportscenter.core.entry.GameEntrySource;
 import com.xbu.esportscenter.core.session.GameSessionManager;
+import com.xbu.esportscenter.platform.redmagic.RedMagicCapabilityProbe;
+import com.xbu.esportscenter.platform.redmagic.RedMagicCapabilityProbeSnapshot;
 import com.xbu.esportscenter.platform.redmagic.RedMagicEntryMonitor;
 import com.xbu.esportscenter.platform.redmagic.RedMagicSnapshot;
 
@@ -19,14 +22,19 @@ public final class GameStarBoxApplication extends Application {
     private static final String TAG_CORE = "[GSB-CORE]";
     private static final String TAG_ENTRY = "[GSB-ENTRY]";
     private static final String TAG_BOOT = "[GSB-BOOT]";
+    private static final String TAG_RM = "[GSB-RM]";
     private static final String CAPABILITY_REDMAGIC_ENTRY_EDGE = "platform.redmagic.entry.edge";
+    private static final String CAPABILITY_REDMAGIC_NATIVE_STACK = "platform.redmagic.native_game_stack.evidence";
+    private static final String CAPABILITY_REDMAGIC_FAN_NODE = "platform.redmagic.fan_node.evidence";
 
     private final BootOrchestrator boot = new BootOrchestrator();
     private final CapabilityRegistry capabilities = new CapabilityRegistry();
     private final GameSessionManager gameSessions = new GameSessionManager();
     private final GameEntryCoordinator gameEntry = new GameEntryCoordinator();
     private RedMagicEntryMonitor redMagicEntryMonitor;
+    private RedMagicCapabilityProbe redMagicCapabilityProbe;
     private volatile RedMagicSnapshot lastRedMagicSnapshot;
+    private volatile RedMagicCapabilityProbeSnapshot lastCapabilityProbe;
     private boolean redMagicSwitchInitialized;
     private Integer previousRedMagicSwitch;
 
@@ -53,6 +61,7 @@ public final class GameStarBoxApplication extends Application {
 
         boot.complete(BootPhase.CAPABILITY_REGISTRY_READY);
 
+        redMagicCapabilityProbe = new RedMagicCapabilityProbe(this);
         redMagicEntryMonitor = new RedMagicEntryMonitor(this, this::onRedMagicSnapshot);
         try {
             redMagicEntryMonitor.start();
@@ -67,6 +76,7 @@ public final class GameStarBoxApplication extends Application {
                     CapabilityAvailability.UNAVAILABLE,
                     "GSB-RM-ENTRY-EDGE-MONITOR-UNAVAILABLE"
             ));
+            publishSemanticSurvey(false, false);
             boot.complete(BootPhase.REDMAGIC_PROBE);
             Log.w(TAG_CORE, "GSB-RM-ENTRY-MONITOR-START-FAILED", e);
         }
@@ -74,6 +84,8 @@ public final class GameStarBoxApplication extends Application {
 
     private synchronized void onRedMagicSnapshot(RedMagicSnapshot snapshot) {
         lastRedMagicSnapshot = snapshot;
+        lastCapabilityProbe = redMagicCapabilityProbe.probe(snapshot);
+        publishCapabilityEvidence(lastCapabilityProbe);
         boot.complete(BootPhase.REDMAGIC_PROBE);
 
         CapabilityAvailability availability;
@@ -139,6 +151,70 @@ public final class GameStarBoxApplication extends Application {
         }
     }
 
+    private void publishCapabilityEvidence(RedMagicCapabilityProbeSnapshot probe) {
+        if (probe == null) return;
+
+        capabilities.publish(new CapabilityRegistry.Entry(
+                CAPABILITY_REDMAGIC_NATIVE_STACK,
+                probe.likelyRedMagic && probe.hasNativeGameStackEvidence()
+                        ? CapabilityAvailability.AVAILABLE
+                        : (probe.likelyRedMagic ? CapabilityAvailability.UNAVAILABLE : CapabilityAvailability.UNSUPPORTED),
+                probe.hasNativeGameStackEvidence()
+                        ? "GSB-RM-SURVEY-NATIVE-STACK-EVIDENCE"
+                        : (probe.likelyRedMagic ? "GSB-RM-SURVEY-NATIVE-STACK-NOT-OBSERVED" : "GSB-RM-SURVEY-NON-REDMAGIC")
+        ));
+
+        capabilities.publish(new CapabilityRegistry.Entry(
+                CAPABILITY_REDMAGIC_FAN_NODE,
+                probe.likelyRedMagic && probe.hasFanEvidence()
+                        ? CapabilityAvailability.AVAILABLE
+                        : (probe.likelyRedMagic ? CapabilityAvailability.UNAVAILABLE : CapabilityAvailability.UNSUPPORTED),
+                probe.hasFanEvidence()
+                        ? "GSB-RM-SURVEY-FAN-NODE-EVIDENCE"
+                        : (probe.likelyRedMagic ? "GSB-RM-SURVEY-FAN-NODE-NOT-OBSERVED" : "GSB-RM-SURVEY-NON-REDMAGIC")
+        ));
+
+        publishSemanticSurvey(probe.likelyRedMagic, probe.hasNativeGameStackEvidence());
+
+        Log.i(TAG_RM,
+                "survey nativeStack=" + probe.hasNativeGameStackEvidence()
+                        + " gameSpace=" + probe.gameSpacePackagePresent
+                        + " gameAssist=" + probe.gameAssistPackagePresent
+                        + " settings=" + probe.gameSettingsExposed
+                        + " fanEnable=" + probe.fanEnableNodePresent
+                        + " fanSpeed=" + probe.fanSpeedNodePresent);
+    }
+
+    private void publishSemanticSurvey(boolean likelyRedMagic, boolean nativeStackEvidence) {
+        String detail;
+        CapabilityAvailability state;
+        if (!likelyRedMagic) {
+            state = CapabilityAvailability.UNSUPPORTED;
+            detail = "GSB-RM-SURVEY-NON-REDMAGIC";
+        } else {
+            state = CapabilityAvailability.UNKNOWN;
+            detail = nativeStackEvidence
+                    ? "GSB-RM-SURVEY-CONTROL-PATH-NOT-YET-VERIFIED"
+                    : "GSB-RM-SURVEY-NATIVE-EVIDENCE-NOT-OBSERVED";
+        }
+
+        String[] semanticIds = {
+                GameCapabilityIds.NETWORK_BOOST,
+                GameCapabilityIds.PERFORMANCE_BOOST,
+                GameCapabilityIds.MEMORY_CLEANUP,
+                GameCapabilityIds.INTERRUPTION_SHIELD,
+                GameCapabilityIds.FPS_MONITOR,
+                GameCapabilityIds.CROSSHAIR,
+                GameCapabilityIds.FAN_CONTROL,
+                GameCapabilityIds.CHARGE_SEPARATION,
+                GameCapabilityIds.SHOULDER_MAPPING,
+                GameCapabilityIds.SCREEN_RECORD
+        };
+        for (String id : semanticIds) {
+            capabilities.publish(new CapabilityRegistry.Entry(id, state, detail));
+        }
+    }
+
     public BootOrchestrator getBootOrchestrator() {
         return boot;
     }
@@ -157,5 +233,9 @@ public final class GameStarBoxApplication extends Application {
 
     public RedMagicSnapshot getLastRedMagicSnapshot() {
         return lastRedMagicSnapshot;
+    }
+
+    public RedMagicCapabilityProbeSnapshot getLastCapabilityProbe() {
+        return lastCapabilityProbe;
     }
 }
