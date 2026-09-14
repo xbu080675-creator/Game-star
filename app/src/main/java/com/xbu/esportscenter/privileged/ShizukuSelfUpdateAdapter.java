@@ -38,7 +38,7 @@ public final class ShizukuSelfUpdateAdapter {
     private static final String OFFICIAL_PACKAGE = "com.xbu.esportscenter";
     private static final int REQUEST_CODE = 0x4753;
     private static final int CHUNK_BYTES = 48 * 1024;
-    private static final long BINDER_WAIT_MS = 1600L;
+    private static final long BINDER_WAIT_MS = 5000L;
 
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -100,6 +100,14 @@ public final class ShizukuSelfUpdateAdapter {
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
+            if (binder == null || !binder.pingBinder()) {
+                Pending p = pending;
+                if (p != null && !destroyed) {
+                    fallback(p, "GSB-PRIV-SHIZUKU-SERVICE-MISSING", "Shizuku UserService 返回了无效 Binder");
+                }
+                return;
+            }
+
             serviceBound.set(true);
             remote = IPrivilegedInstaller.Stub.asInterface(binder);
             Pending p = pending;
@@ -173,10 +181,11 @@ public final class ShizukuSelfUpdateAdapter {
         status(p, "正在连接 Shizuku…");
 
         if (!safePingBinder()) {
+            status(p, "正在等待 Shizuku Binder…");
             main.postDelayed(() -> {
                 Pending current = pending;
                 if (current == p && !destroyed && !safePingBinder()) {
-                    fallback(p, "GSB-PRIV-SHIZUKU-UNAVAILABLE", "Shizuku 未运行或不可用");
+                    fallback(p, "GSB-PRIV-SHIZUKU-UNAVAILABLE", "Shizuku Binder 在等待窗口内仍不可用；请确认 Shizuku 正在运行");
                 }
             }, BINDER_WAIT_MS);
             return;
@@ -258,14 +267,30 @@ public final class ShizukuSelfUpdateAdapter {
 
             status(p, "安全校验已确认 · 正在静默提交更新…");
             String result = service.finishInstall();
-            if (!"OK".equals(result)) {
-                throw new IllegalStateException(result == null ? "empty result" : result);
+            if (result == null || result.trim().isEmpty()) {
+                throw new IllegalStateException("empty result");
             }
 
-            Log.i(INSTALL_TAG, "privileged self-update committed");
+            String normalizedResult = result.trim();
+            if (normalizedResult.startsWith("ERR:")) {
+                String errorCode = normalizedResult.substring(4).trim();
+                fallback(p, errorCode, explainFailure(errorCode));
+                return;
+            }
+            if (!normalizedResult.startsWith("OK")) {
+                throw new IllegalStateException(normalizedResult);
+            }
+
+            Log.i(INSTALL_TAG, "privileged self-update committed result=" + normalizedResult);
             pending = null;
             installInFlight = false;
             unbindService(true);
+
+            if ("OK:RESTART-FAILED".equals(normalizedResult)) {
+                main.post(() -> p.callback.onStatus("更新已安装 · 自动重启失败，请手动重新打开竞界"));
+                return;
+            }
+
             main.post(p.callback::onCompleted);
         } catch (Throwable t) {
             Log.e(INSTALL_TAG, "GSB-PRIV-INSTALL-TRANSACTION-FAILED", t);
@@ -275,6 +300,19 @@ public final class ShizukuSelfUpdateAdapter {
             }
             fallback(p, "GSB-PRIV-INSTALL-TRANSACTION-FAILED", shortMessage(t));
         }
+    }
+
+    private static String explainFailure(String errorCode) {
+        if ("GSB-PRIV-INSTALL-PACKAGE-DENIED-ADB-POLICY".equals(errorCode)) {
+            return "Shizuku 已连接且授权正常，但当前 ROM 禁止 shell/ADB 安装 APK。请在开发者选项开启“允许 ADB 安装 / USB 安装”后重试。";
+        }
+        if ("GSB-PRIV-INSTALL-COMMIT-TIMEOUT".equals(errorCode)) {
+            return "Android Package Manager 在规定时间内没有完成安装";
+        }
+        if ("GSB-PRIV-INSTALL-COMMIT-FAILED".equals(errorCode)) {
+            return "Android Package Manager 拒绝了特权安装请求";
+        }
+        return errorCode;
     }
 
     private void fallback(Pending p, String errorCode, String message) {
