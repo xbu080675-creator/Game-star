@@ -65,7 +65,7 @@ public final class HardwareAwakeningMotorDriver {
                 if (elapsed >= BOTH_HOLD_MS) {
                     step = Step.ARMED;
                     stopRepeatingMotor();
-                    playOneShot(70L, 235, "armed-lock");
+                    playIgnition();
                     Log.i(TAG, "hardware sequence ARMED motor-side");
                     return;
                 }
@@ -199,10 +199,7 @@ public final class HardwareAwakeningMotorDriver {
         }
     }
 
-    /**
-     * Native ignition pulse. This is intentionally callable from the Activity at the exact
-     * IgnitionGate release point; it is a real motor waveform, not speaker bass.
-     */
+    /** Strong physical ignition waveform. No speaker/audio path is involved. */
     public void playIgnition() {
         if (!running) return;
         VibrationEffect effect;
@@ -279,7 +276,7 @@ public final class HardwareAwakeningMotorDriver {
 
     private void playClick(String reason) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
                     && vibrator != null
                     && vibrator.areAllEffectsSupported(VibrationEffect.EFFECT_CLICK)
                     == Vibrator.VIBRATION_EFFECT_SUPPORT_YES) {
