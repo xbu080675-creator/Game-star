@@ -28,6 +28,8 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREF_PLAYGROUND_MIGRATION_DONE = "hardware_playground_migration_0427_v5";
     private static final String PREF_CINEMATIC_PLAYGROUND_MIGRATION_DONE =
             "hardware_playground_cinematic_migration_0427_v6";
+    private static final String PREF_ASSET_REBUILD_MIGRATION_DONE =
+            "hardware_playground_asset_rebuild_migration_0427_v7";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -42,6 +44,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOneRealisticAwakeningAfterPrototype(application);
         forceOnePlayableHardwarePlayground(application);
         forceOneCinematicHardwarePlayground(application);
+        forceOneAssetRebuiltHardwarePlayground(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -144,6 +147,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_CINEMATIC_PLAYGROUND_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time cinematic hardware playground migration applied");
+    }
+
+    /**
+     * v7 replaces presentation-drawn pseudo hardware with a standalone materialized asset pack.
+     * Keep all verified hardware adapters unchanged and reset the first-run flag once so install-over
+     * testing reaches the asset rebuild without requiring app-data deletion.
+     */
+    private static void forceOneAssetRebuiltHardwarePlayground(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_ASSET_REBUILD_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_ASSET_REBUILD_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time hardware playground asset rebuild migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
