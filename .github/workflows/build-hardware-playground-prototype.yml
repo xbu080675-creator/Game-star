@@ -72,19 +72,38 @@ jobs:
         run: |
           set -euo pipefail
           BOOT='app/src/main/assets/shoulder-boot.html'
+          ACTIVITY='app/src/main/java/com/xbu/esportscenter/BootMainActivity.java'
           MOTOR='app/src/main/java/com/xbu/esportscenter/platform/android/HardwareAwakeningMotorDriver.java'
+          MOTION='app/src/main/java/com/xbu/esportscenter/platform/android/HardwarePlaygroundMotionAdapter.java'
+          PLAY_HAPTIC='app/src/main/java/com/xbu/esportscenter/platform/android/HardwarePlaygroundHapticAdapter.java'
           BOOTSTRAP='app/src/main/java/com/xbu/esportscenter/privileged/RedMagicShoulderBootstrapProvider.java'
           MANIFEST='app/src/main/AndroidManifest.xml'
+
           grep -q 'HARDWARE PLAYGROUND' "$BOOT"
-          grep -q 'deviceorientation' "$BOOT"
           grep -q 'touchCanvas' "$BOOT"
+          grep -q 'hapticPad' "$BOOT"
           grep -q 'fanDrag' "$BOOT"
           grep -q 'THERMAL FAN MODEL' "$BOOT"
           grep -q '0815 LINEAR MOTOR' "$BOOT"
+          grep -q 'onGSBMotion' "$BOOT"
+          grep -q 'GSBPlayground' "$ACTIVITY"
+
+          grep -q 'SensorManager' "$MOTION"
+          grep -q 'TYPE_GAME_ROTATION_VECTOR' "$MOTION"
+          grep -q '\[GSB-PLAYGROUND\]' "$MOTION"
+          grep -q 'HardwarePlaygroundMotionAdapter' "$ACTIVITY"
+
+          grep -q 'VibratorManager' "$PLAY_HAPTIC"
+          grep -q 'USAGE_HARDWARE_FEEDBACK' "$PLAY_HAPTIC"
+          grep -q '\[GSB-PLAY-HAPTIC\]' "$PLAY_HAPTIC"
+          grep -q 'playSample' "$PLAY_HAPTIC"
+          grep -q 'HardwarePlaygroundHapticAdapter' "$ACTIVITY"
+
           grep -q 'hardware_playground_migration_0427_v5' "$BOOTSTRAP"
           grep -q 'android.permission.VIBRATE' "$MANIFEST"
           grep -q 'VibratorManager' "$MOTOR"
           grep -q 'USAGE_HARDWARE_FEEDBACK' "$MOTOR"
+
           if grep -Eq 'startHum\(|humGain|frequency\.value=4[0-9]|tone\((58|74|96),' "$BOOT"; then
             echo 'Speaker fake-haptic path detected' >&2
             exit 1
