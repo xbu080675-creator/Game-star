@@ -31,6 +31,7 @@ public final class BootMainActivity extends MainActivity {
     private InstalledGameCatalog gameCatalog;
     private AndroidGameSessionLauncher gameLauncher;
     private WebView bootWebView;
+    private boolean runtimeListenersAttached;
     private final BootOrchestrator.Listener bootListener = this::dispatchBootSnapshot;
     private final CapabilityRegistry.Listener capabilityListener = this::dispatchCapabilitySnapshot;
     private final GameSessionManager.Listener sessionListener = (previous, current, gameId) ->
@@ -47,12 +48,11 @@ public final class BootMainActivity extends MainActivity {
         gameCatalog = new InstalledGameCatalog(this);
         gameLauncher = new AndroidGameSessionLauncher(this, gameCatalog, sessions);
         boot.addListener(bootListener);
-        capabilities.addListener(capabilityListener);
-        sessions.addListener(sessionListener);
 
         bootWebView = findWebView(getWindow().getDecorView());
         if (bootWebView != null) {
             bootWebView.addJavascriptInterface(new BootBridge(), "GSBBoot");
+            bootWebView.addJavascriptInterface(new RuntimeBridge(), "GSBRuntime");
             bootWebView.addJavascriptInterface(new CapabilityBridge(), "GSBCapabilities");
             bootWebView.addJavascriptInterface(new GameBridge(), "GSBGames");
             bootWebView.addJavascriptInterface(new SessionBridge(), "GSBSession");
@@ -94,6 +94,14 @@ public final class BootMainActivity extends MainActivity {
         }
     }
 
+    /** Activates non-boot UI listeners only after the boot animation has visually completed. */
+    private final class RuntimeBridge {
+        @JavascriptInterface
+        public void ready() {
+            runOnUiThread(BootMainActivity.this::attachRuntimeListeners);
+        }
+    }
+
     private final class CapabilityBridge {
         @JavascriptInterface
         public String state() {
@@ -122,6 +130,15 @@ public final class BootMainActivity extends MainActivity {
         }
     }
 
+    private void attachRuntimeListeners() {
+        if (runtimeListenersAttached) return;
+        runtimeListenersAttached = true;
+        if (capabilities != null) capabilities.addListener(capabilityListener);
+        if (sessions != null) sessions.addListener(sessionListener);
+        if (capabilities != null) dispatchCapabilitySnapshot(capabilities.snapshot());
+        if (sessions != null) dispatchSessionSnapshot(sessions.getState(), sessions.getGameId());
+    }
+
     private void dispatchBootSnapshot(BootSnapshot snapshot) {
         WebView view = bootWebView;
         if (view == null) return;
@@ -137,11 +154,10 @@ public final class BootMainActivity extends MainActivity {
     }
 
     private void dispatchCapabilitySnapshot(Map<String, CapabilityRegistry.Entry> snapshot) {
-        WebView view = bootWebView;
-        if (view == null) return;
+        if (!runtimeListenersAttached || bootWebView == null) return;
         String json = toJson(snapshot);
         runOnUiThread(() -> {
-            if (bootWebView != null) {
+            if (runtimeListenersAttached && bootWebView != null) {
                 bootWebView.evaluateJavascript(
                         "window.onGSBCapabilityState&&window.onGSBCapabilityState(" + json + ");",
                         null
@@ -151,10 +167,10 @@ public final class BootMainActivity extends MainActivity {
     }
 
     private void dispatchSessionSnapshot(GameSessionState state, String gameId) {
-        if (bootWebView == null) return;
+        if (!runtimeListenersAttached || bootWebView == null) return;
         String json = toJson(state, gameId);
         runOnUiThread(() -> {
-            if (bootWebView != null) {
+            if (runtimeListenersAttached && bootWebView != null) {
                 bootWebView.evaluateJavascript(
                         "window.onGSBSessionState&&window.onGSBSessionState(" + json + ");",
                         null
@@ -209,13 +225,14 @@ public final class BootMainActivity extends MainActivity {
             boot = null;
         }
         if (capabilities != null) {
-            capabilities.removeListener(capabilityListener);
+            if (runtimeListenersAttached) capabilities.removeListener(capabilityListener);
             capabilities = null;
         }
         if (sessions != null) {
-            sessions.removeListener(sessionListener);
+            if (runtimeListenersAttached) sessions.removeListener(sessionListener);
             sessions = null;
         }
+        runtimeListenersAttached = false;
         gameLauncher = null;
         gameCatalog = null;
         bootWebView = null;
