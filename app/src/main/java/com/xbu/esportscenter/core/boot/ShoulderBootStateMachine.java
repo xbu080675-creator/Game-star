@@ -4,7 +4,7 @@ package com.xbu.esportscenter.core.boot;
  * Platform-neutral first-boot shoulder calibration and ignition state machine.
  * Core owns only semantic input/hold timing. Android/REDMAGIC adapters translate hardware input.
  */
-public final class ShoulderBootStateMachine {
+public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink {
     public enum Side { LEFT, RIGHT }
 
     public enum Phase {
@@ -60,6 +60,15 @@ public final class ShoulderBootStateMachine {
     private int progress;
     private int level;
     private boolean holdSatisfied;
+
+    public ShoulderBootStateMachine() {
+        ShoulderBootInputHub.attach(this);
+    }
+
+    @Override
+    public void onShoulderInput(Side side, boolean down, long nowMs) {
+        onInput(side, down, nowMs);
+    }
 
     public synchronized Snapshot snapshot() {
         return snapshotLocked();
@@ -188,6 +197,7 @@ public final class ShoulderBootStateMachine {
         rightDown = false;
         progress = 100;
         level = 0;
+        ShoulderBootInputHub.detach(this);
         return snapshotLocked();
     }
 
