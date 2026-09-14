@@ -1,4 +1,11 @@
 (() => {
+  if (!document.getElementById('gsb-menu-music-js')) {
+    const musicScript = document.createElement('script');
+    musicScript.id = 'gsb-menu-music-js';
+    musicScript.src = 'menu-music.js';
+    document.head.appendChild(musicScript);
+  }
+
   const panel = document.querySelector('.systemScene .rightPanel');
   if (!panel || document.getElementById('gsbUpdateSetting')) return;
 
