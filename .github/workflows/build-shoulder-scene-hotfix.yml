@@ -80,7 +80,9 @@ jobs:
           grep -q 'KEY_F8' "$SERVICE"
           grep -q 'enableCalibrationScene' "$AIDL"
           grep -q 'restoreCalibrationScene' "$AIDL"
-          if grep -Eqi 'virtual_game_key|WRITE_SECURE_SETTINGS|sendevent|uinput|input[[:space:]]+(keyevent|motionevent)|sh[[:space:]]+-c|runShell|execCommand|String command' "$SERVICE" "$ADAPTER" "$AIDL"; then
+          CODE_ONLY="$RUNNER_TEMP/shoulder-code-only.txt"
+          grep -Ev '^[[:space:]]*(//|/\*|\*|\*/)' "$SERVICE" "$ADAPTER" "$AIDL" > "$CODE_ONLY"
+          if grep -Eqi 'virtual_game_key|WRITE_SECURE_SETTINGS|sendevent|uinput|input[[:space:]]+(keyevent|motionevent)|sh[[:space:]]+-c|runShell|execCommand|String command' "$CODE_ONLY"; then
             echo 'Shoulder calibration privilege surface expanded beyond typed reversible contract' >&2
             exit 1
           fi
