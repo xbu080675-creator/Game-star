@@ -14,5 +14,7 @@ public final class GameCapabilityIds {
     public static final String FAN_CONTROL = "device.fan_control";
     public static final String CHARGE_SEPARATION = "device.charge_separation";
     public static final String SHOULDER_MAPPING = "input.shoulder_mapping";
+    public static final String TOUCH_POLICY = "input.touch_policy";
+    public static final String REFRESH_RATE = "display.refresh_rate";
     public static final String SCREEN_RECORD = "capture.screen_record";
 }
