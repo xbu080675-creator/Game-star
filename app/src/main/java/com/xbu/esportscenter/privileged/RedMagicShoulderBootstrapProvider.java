@@ -25,6 +25,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREF_AWAKENING_MIGRATION_DONE = "hardware_awakening_migration_0427_v2";
     private static final String PREF_MOTOR_MIGRATION_DONE = "hardware_motor_migration_0427_v3";
     private static final String PREF_REALISTIC_VISUAL_MIGRATION_DONE = "hardware_realistic_visual_migration_0427_v4";
+    private static final String PREF_PLAYGROUND_MIGRATION_DONE = "hardware_playground_migration_0427_v5";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -37,6 +38,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOneHardwareAwakeningAfterPrototype(application);
         forceOneMotorBackedAwakeningAfterPrototype(application);
         forceOneRealisticAwakeningAfterPrototype(application);
+        forceOnePlayableHardwarePlayground(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -76,11 +78,6 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         return true;
     }
 
-    /**
-     * The first 0.4.27 prototype could only finish through touch fallback on REDMAGIC 9 Pro+.
-     * Reset that calibration exactly once so an in-place update actually exercises the new SAR
-     * reader. The migration marker prevents future launches from repeatedly erasing calibration.
-     */
     private static void forceOneSarCalibrationAfterPrototype(Application application) {
         SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
         if (prefs.getBoolean(PREF_SAR_MIGRATION_DONE, false)) return;
@@ -91,11 +88,6 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         Log.i(TAG, "one-time SAR calibration migration applied");
     }
 
-    /**
-     * Users who already validated the SAR prototype must still see the redesigned Hardware
-     * Awakening exactly once. This is a presentation/provisioning migration, not a permission or
-     * REDMAGIC setting migration, and it never repeats after the first upgraded launch.
-     */
     private static void forceOneHardwareAwakeningAfterPrototype(Application application) {
         SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
         if (prefs.getBoolean(PREF_AWAKENING_MIGRATION_DONE, false)) return;
@@ -106,11 +98,6 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         Log.i(TAG, "one-time hardware awakening migration applied");
     }
 
-    /**
-     * 0.4.27 Hardware Awakening initially used sub-bass WebAudio that could be mistaken for haptic
-     * feedback while the physical motor path remained unverified. Reset once more so an in-place
-     * upgrade necessarily exercises the new Vibrator/VibratorManager-backed motor path.
-     */
     private static void forceOneMotorBackedAwakeningAfterPrototype(Application application) {
         SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
         if (prefs.getBoolean(PREF_MOTOR_MIGRATION_DONE, false)) return;
@@ -121,11 +108,6 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         Log.i(TAG, "one-time physical motor awakening migration applied");
     }
 
-    /**
-     * The first Hardware Awakening visual pass was intentionally abstract. Reset the first-boot
-     * presentation exactly once so an in-place install exercises the realistic phone cutaway pass
-     * without clearing app data. This does not alter the REDMAGIC scene or privilege contract.
-     */
     private static void forceOneRealisticAwakeningAfterPrototype(Application application) {
         SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
         if (prefs.getBoolean(PREF_REALISTIC_VISUAL_MIGRATION_DONE, false)) return;
@@ -134,6 +116,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_REALISTIC_VISUAL_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time realistic hardware awakening migration applied");
+    }
+
+    /**
+     * v5 turns the presentation into a playable hardware playground: shoulders first, then motion,
+     * glass interaction, thermal-model interaction and final L+R ignition. Reset once so an
+     * in-place update reaches the interactive pass without clearing user data.
+     */
+    private static void forceOnePlayableHardwarePlayground(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_PLAYGROUND_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_PLAYGROUND_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time hardware playground migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
