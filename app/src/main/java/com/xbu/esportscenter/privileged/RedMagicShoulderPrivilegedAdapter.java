@@ -13,6 +13,7 @@ import android.util.Log;
 import com.xbu.esportscenter.BuildConfig;
 import com.xbu.esportscenter.core.boot.ShoulderBootInputHub;
 import com.xbu.esportscenter.core.boot.ShoulderBootStateMachine;
+import com.xbu.esportscenter.platform.android.HardwareAwakeningMotorDriver;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -38,6 +39,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
     private final Shizuku.UserServiceArgs serviceArgs;
     private final AtomicBoolean bindRequested = new AtomicBoolean(false);
     private final AtomicBoolean serviceBound = new AtomicBoolean(false);
+    private final HardwareAwakeningMotorDriver motorDriver;
 
     private volatile IRedMagicShoulderReader remote;
     private volatile boolean active;
@@ -54,10 +56,12 @@ public final class RedMagicShoulderPrivilegedAdapter {
             else if (side == 1) semantic = ShoulderBootStateMachine.Side.RIGHT;
             else return;
 
+            long now = SystemClock.uptimeMillis();
+            motorDriver.onShoulderInput(semantic, down, now);
             boolean delivered = ShoulderBootInputHub.publish(
                     semantic,
                     down,
-                    SystemClock.uptimeMillis()
+                    now
             );
             if (delivered) {
                 Log.d(TAG, "semantic input " + semantic + (down ? " DOWN" : " UP"));
@@ -88,6 +92,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
         remote = null;
         bindRequested.set(false);
         serviceBound.set(false);
+        motorDriver.cancel();
         Log.w(TAG, "GSB-SHOULDER-BINDER-DEAD");
         if (active && !destroyed) scheduleBinderRetry();
     };
@@ -124,6 +129,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
                     return;
                 }
                 Log.i(TAG, "temporary REDMAGIC shoulder scene active");
+                motorDriver.onLinkReady();
 
                 String devices = remote.detectDevices();
                 if (devices == null || devices.trim().isEmpty()) {
@@ -134,6 +140,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 remote.startReading(callback);
             } catch (Throwable t) {
                 Log.w(TAG, "GSB-SHOULDER-READER-START-FAILED", t);
+                motorDriver.cancel();
                 stopAndRestoreRemote();
                 unbindService(true);
             }
@@ -144,6 +151,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
             remote = null;
             bindRequested.set(false);
             serviceBound.set(false);
+            motorDriver.cancel();
             if (active && !destroyed) {
                 Log.w(TAG, "GSB-SHOULDER-BINDER-DISCONNECTED");
                 scheduleBinderRetry();
@@ -166,6 +174,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
 
     public RedMagicShoulderPrivilegedAdapter(Context context) {
         this.context = context.getApplicationContext();
+        motorDriver = new HardwareAwakeningMotorDriver(this.context);
         serviceArgs = new Shizuku.UserServiceArgs(
                 new ComponentName(this.context, RedMagicShoulderReaderService.class)
         )
@@ -191,6 +200,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
     }
 
     public void deactivate() {
+        motorDriver.cancel();
         if (!active && remote == null && !bindRequested.get() && !serviceBound.get()) return;
         active = false;
         permissionRequestInFlight = false;
