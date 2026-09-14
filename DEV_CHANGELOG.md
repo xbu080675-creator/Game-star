@@ -1,5 +1,15 @@
 # Game Star Box Development Changelog
 
+## 0.4.12 / versionCode 25
+
+- REDMAGIC Entry 从“只读状态”推进到“语义边沿”：新增平台无关 `GameEntrySource`、`GameEntryRequest`、`GameEntryCoordinator`。
+- `GameStarBoxApplication` 现在把红魔竞技键真实 `非 0 -> 0` 转换翻译为 `REDMAGIC_COMPETITIVE_SWITCH` 入口请求，并使用单调 sequence 记录。
+- 应用启动时只建立竞技键基线；如果启动前竞技键已经开启，不会伪造一次新的 Entry Request，避免误触发后续接管逻辑。
+- 新增 `platform.redmagic.entry.edge` capability 及稳定状态码；Core 继续保持无 Android/厂商/Shizuku/shell 依赖。
+- 新增 `[GSB-ENTRY]` 稳定日志前缀，便于实机验证每个真实竞技键开启边沿是否只产生一次语义请求。
+- 本版本仍不写 Settings、不调用 Shizuku、不执行 shell、不强制拉起 Activity、不修改原红魔游戏空间行为；现有特权白名单继续仅允许竞界自身 OTA。
+- 更新后端模块留档与 0.4.12 实机测试矩阵；前端、启动动画、菜单音乐、OTA 交互保持冻结。
+
 ## 0.4.11 / versionCode 24
 
 - 后端正式进入 Phase 1：新增平台无关 `CapabilityRegistry` 与 `GameSessionManager`，Core 不引用 Android/厂商/Shizuku/shell API。
