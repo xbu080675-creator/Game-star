@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<title>Game Star Box Boot</title>
+<style>
+:root{--cyan:#8eeaff;--blue:#4c8dff;--violet:#8e6dff;--white:#f7fbff;--dim:#53606c;--edge:rgba(220,241,255,.28);--level:0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font-family:"Segoe UI","PingFang SC",system-ui,sans-serif;user-select:none;touch-action:none}
+body{display:grid;place-items:center}.viewport{position:fixed;inset:0;overflow:hidden;background:#000;display:grid;place-items:center}.ambient{position:absolute;inset:-20%;opacity:.28;background:radial-gradient(circle at 50% 48%,rgba(57,88,155,.12),transparent 28%),radial-gradient(circle at 50% 52%,rgba(116,67,176,.07),transparent 40%);filter:blur(26px);transition:opacity .3s ease}.eyebrow{position:absolute;top:5.4vh;left:0;right:0;text-align:center;font-size:clamp(7px,.75vw,11px);font-weight:700;letter-spacing:.34em;color:#607180;z-index:10}.eyebrow b{color:#9fc3d5}.deviceWrap{position:relative;width:min(82vw,1040px);height:min(58vh,470px);display:grid;place-items:center;perspective:1400px}.device{position:relative;width:86%;height:68%;min-height:230px;border:1px solid rgba(225,240,250,.23);border-radius:30px;background:linear-gradient(180deg,#0b0e12,#050607 70%,#020303);box-shadow:0 30px 90px rgba(0,0,0,.85),inset 0 1px rgba(255,255,255,.05);transform:translateZ(0);will-change:transform}.device:before{content:"";position:absolute;inset:7px;border:1px solid rgba(155,184,203,.07);border-radius:24px;pointer-events:none}.screen{position:absolute;left:5.2%;right:5.2%;top:10%;bottom:10%;border:1px solid rgba(194,222,240,.13);border-radius:18px;overflow:hidden;background:#020608;box-shadow:inset 0 0 0 1px rgba(255,255,255,.015),inset 0 0 80px rgba(30,74,104,.09)}.screenGrid{position:absolute;inset:0;opacity:.12;background-image:linear-gradient(rgba(139,199,232,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(139,199,232,.08) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(to bottom,transparent,black 20%,black 80%,transparent)}.scan{position:absolute;left:0;right:0;height:1px;top:48%;background:linear-gradient(90deg,transparent,rgba(132,219,255,.5),transparent);opacity:.25;box-shadow:0 0 18px rgba(83,188,255,.28)}.center{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px}.prompt{position:relative;z-index:3;transform:translateY(-2px)}.prompt .kicker{font-size:clamp(7px,.8vw,11px);letter-spacing:.3em;color:#597184;margin-bottom:9px}.prompt h1{margin:0;font-size:clamp(25px,4vw,58px);font-weight:760;letter-spacing:.02em;line-height:.95}.prompt p{margin:10px 0 0;font-size:clamp(8px,1vw,13px);letter-spacing:.16em;color:#728595}.prompt .progress{margin:18px auto 0;display:flex;gap:7px;justify-content:center}.seg{width:clamp(30px,4.4vw,56px);height:3px;background:#162029;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);transition:.1s ease}.seg.on{background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 14px rgba(87,191,255,.46)}.shoulder{position:absolute;top:-14px;width:29%;height:42px;border:1px solid rgba(208,234,250,.22);background:linear-gradient(180deg,#171c22,#080b0e);box-shadow:0 13px 24px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.05);display:flex;align-items:center;z-index:7;transition:filter .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}.shoulder.left{left:7.5%;border-radius:16px 8px 6px 17px;justify-content:flex-start;padding-left:18px}.shoulder.right{right:7.5%;border-radius:8px 16px 17px 6px;justify-content:flex-end;padding-right:18px}.shoulder .label{font-size:12px;font-weight:900;letter-spacing:.2em;color:#62717d}.shoulder:after{content:"";position:absolute;left:12%;right:12%;bottom:4px;height:2px;background:#17212a;transition:.12s ease}.shoulder.active{border-color:rgba(153,224,255,.8);box-shadow:0 13px 24px rgba(0,0,0,.58),0 0 22px rgba(80,181,255,.25),inset 0 0 24px rgba(78,146,255,.08)}.shoulder.active .label{color:#e9f9ff}.shoulder.active:after{background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 12px rgba(104,207,255,.7)}.shoulder.down{transform:translateY(3px) scaleY(.94);filter:brightness(1.2)}.touchZone{position:absolute;top:-8px;width:36%;height:76px;z-index:20}.touchZone.left{left:3%}.touchZone.right{right:3%}.cornerMark{position:absolute;bottom:14px;font-size:7px;letter-spacing:.2em;color:#3b4954}.cornerMark.left{left:20px}.cornerMark.right{right:20px}.powerEcho{position:absolute;inset:0;border-radius:18px;opacity:0;pointer-events:none;border:1px solid rgba(116,220,255,.3)}.screen.level-1 .powerEcho{animation:echo 1.15s infinite}.screen.level-2 .powerEcho{animation:echo .8s infinite}.screen.level-3 .powerEcho{animation:echo .5s infinite}.screen.level-4 .powerEcho{animation:echo .28s infinite}.device.level-1{animation:micro1 .14s steps(2,end) infinite}.device.level-2{animation:micro2 .11s steps(2,end) infinite}.device.level-3{animation:micro3 .075s steps(2,end) infinite}.device.level-4{animation:micro4 .052s steps(2,end) infinite}.brand{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none;z-index:9}.brandInner{text-align:center}.brandMark{width:120px;height:48px;margin:0 auto 18px;position:relative}.brandMark .rail{position:absolute;top:8px;width:37px;height:32px;border:2px solid #eaf8ff;opacity:.95}.brandMark .rail.l{left:0;border-radius:15px 5px 5px 15px;border-right:0}.brandMark .rail.r{right:0;border-radius:5px 15px 15px 5px;border-left:0}.brandMark .core{position:absolute;left:35px;right:35px;top:4px;bottom:4px;border:2px solid #eaf8ff;box-shadow:0 0 22px rgba(123,213,255,.3)}.brandMark .core:after{content:"";position:absolute;width:7px;height:7px;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);background:#fff;box-shadow:0 0 14px #aeeaff}.brand b{display:block;font-size:clamp(24px,3vw,45px);letter-spacing:.22em;margin-right:-.22em}.brand small{display:block;margin-top:9px;font-size:7px;letter-spacing:.34em;color:#667985}.viewport.igniting .prompt{animation:promptOut .22s ease forwards}.viewport.igniting .shoulder.left{animation:leftIgnite 1.18s cubic-bezier(.22,.75,.18,1) forwards}.viewport.igniting .shoulder.right{animation:rightIgnite 1.18s cubic-bezier(.22,.75,.18,1) forwards}.viewport.igniting .screen{animation:screenIgnite 1.35s cubic-bezier(.2,.82,.2,1) forwards}.viewport.igniting .device{animation:wholeIgnite .045s steps(2,end) infinite}.viewport.igniting .ambient{animation:ambientIgnite 1.3s ease forwards}.viewport.branding .device{animation:none;opacity:0;transition:opacity .08s linear}.viewport.branding .brand{animation:brandIn .52s cubic-bezier(.2,.82,.2,1) forwards}.hint{position:absolute;bottom:5.5vh;left:0;right:0;text-align:center;font-size:7px;letter-spacing:.2em;color:#36434d}.hint span{color:#617481}.devFallback{position:absolute;bottom:11vh;left:0;right:0;text-align:center;font-size:7px;color:#25323a;letter-spacing:.1em}.devFallback.show{color:#526672}
+@keyframes echo{0%{opacity:0;transform:scale(.92)}35%{opacity:.36}100%{opacity:0;transform:scale(1.03)}}
+@keyframes micro1{0%{transform:translateX(-.2px)}100%{transform:translateX(.2px)}}
+@keyframes micro2{0%{transform:translate(-.45px,.15px)}100%{transform:translate(.45px,-.15px)}}
+@keyframes micro3{0%{transform:translate(-.9px,.35px)}100%{transform:translate(.9px,-.35px)}}
+@keyframes micro4{0%{transform:translate(-1.6px,.7px) rotate(-.035deg)}100%{transform:translate(1.6px,-.7px) rotate(.035deg)}}
+@keyframes promptOut{to{opacity:0;transform:scale(.96)}}
+@keyframes leftIgnite{0%{transform:none}55%{transform:translateX(16px) translateY(2px);filter:brightness(1.4)}100%{transform:translateX(46%) scaleX(.72);opacity:0}}
+@keyframes rightIgnite{0%{transform:none}55%{transform:translateX(-16px) translateY(2px);filter:brightness(1.4)}100%{transform:translateX(-46%) scaleX(.72);opacity:0}}
+@keyframes screenIgnite{0%{box-shadow:inset 0 0 80px rgba(30,74,104,.09)}35%{box-shadow:inset 0 0 110px rgba(57,123,180,.22),0 0 25px rgba(93,194,255,.12)}70%{filter:brightness(1.65);transform:scale(.998)}78%{filter:brightness(.1);background:#000}100%{filter:brightness(0);background:#000}}
+@keyframes wholeIgnite{0%{transform:translate(-2.2px,.7px)}100%{transform:translate(2.2px,-.7px)}}
+@keyframes ambientIgnite{0%{opacity:.28}60%{opacity:.78}76%{opacity:0}100%{opacity:0}}
+@keyframes brandIn{0%{opacity:0;transform:scale(.965)}18%{opacity:1}60%{transform:scale(1.015)}100%{opacity:1;transform:none}}
+@media(max-height:520px){.deviceWrap{height:67vh}.device{height:72%;min-height:210px}.eyebrow{top:3.5vh}.hint{bottom:3.5vh}.devFallback{bottom:8vh}.shoulder{height:34px;top:-11px}.touchZone{height:58px}.prompt h1{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="viewport" id="viewport">
+  <div class="ambient"></div>
+  <div class="eyebrow"><b>GAME STAR BOX</b> // FIRST BOOT // HARDWARE LINK</div>
+  <div class="deviceWrap">
+    <div class="device" id="device">
+      <div class="shoulder left" id="leftShoulder"><span class="label">L</span></div>
+      <div class="shoulder right" id="rightShoulder"><span class="label">R</span></div>
+      <div class="touchZone left" id="leftTouch" aria-label="Left shoulder test zone"></div>
+      <div class="touchZone right" id="rightTouch" aria-label="Right shoulder test zone"></div>
+      <div class="screen" id="screen">
+        <div class="screenGrid"></div><div class="scan"></div><div class="powerEcho"></div>
+        <div class="center"><div class="prompt" id="prompt"><div class="kicker" id="kicker">INPUT CALIBRATION</div><h1 id="title">TAP L</h1><p id="copy">轻点左肩键</p><div class="progress" id="progress"><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div></div></div>
+        <span class="cornerMark left">SHOULDER INPUT</span><span class="cornerMark right">HAPTIC LINK</span>
+      </div>
+    </div>
+  </div>
+  <div class="brand" id="brand"><div class="brandInner"><div class="brandMark"><i class="rail l"></i><i class="core"></i><i class="rail r"></i></div><b>GAME STAR BOX</b><small>HARDWARE ONLINE</small></div></div>
+  <div class="devFallback" id="devFallback">实体肩键无响应时，可触摸屏幕顶部 L / R 区域验证本次交互原型</div>
+  <div class="hint">L / R SHOULDER CALIBRATION <span>·</span> DO NOT POWER OFF</div>
+</div>
+<script>
+(() => {
+  const viewport=document.getElementById('viewport'),device=document.getElementById('device'),screen=document.getElementById('screen');
+  const leftShoulder=document.getElementById('leftShoulder'),rightShoulder=document.getElementById('rightShoulder');
+  const title=document.getElementById('title'),copy=document.getElementById('copy'),kicker=document.getElementById('kicker');
+  const segs=[...document.querySelectorAll('.seg')],fallback=document.getElementById('devFallback');
+  let latest=null,lastPhase='',lastLevel=-1,ignitionStarted=false,audio=null,holdOsc=null,holdGain=null,noiseTimer=0;
+
+  function bridge(){return window.GSBShoulderBoot||null}
+  function ensureAudio(){
+    if(audio)return audio;
+    try{audio=new(window.AudioContext||window.webkitAudioContext)()}catch(_){return null}
+    try{audio.resume()}catch(_){}
+    return audio;
+  }
+  function tone(f1,f2,d,g=.04,type='sine',delay=0){const c=ensureAudio();if(!c)return;const t=c.currentTime+delay,o=c.createOscillator(),a=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,f1),t);o.frequency.exponentialRampToValueAtTime(Math.max(1,f2),t+d);a.gain.setValueAtTime(.0001,t);a.gain.exponentialRampToValueAtTime(g,t+.008);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(c.destination);o.start(t);o.stop(t+d+.02)}
+  function clickSound(side){tone(side==='LEFT'?420:500,side==='LEFT'?680:810,.075,.055,'triangle');tone(side==='LEFT'?96:112,72,.10,.032,'sine')}
+  function stopHoldSound(){if(holdOsc){try{holdGain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.035);holdOsc.stop(audio.currentTime+.05)}catch(_){}holdOsc=null;holdGain=null}}
+  function holdSound(level,side){
+    if(level<=0){stopHoldSound();return}
+    const c=ensureAudio();if(!c)return;
+    if(!holdOsc){holdOsc=c.createOscillator();holdGain=c.createGain();holdOsc.type='sawtooth';holdGain.gain.value=.0001;holdOsc.connect(holdGain).connect(c.destination);holdOsc.start()}
+    const base=(side==='RIGHT'?57:49)+(level*9);holdOsc.frequency.cancelScheduledValues(c.currentTime);holdOsc.frequency.linearRampToValueAtTime(base,c.currentTime+.06);holdGain.gain.cancelScheduledValues(c.currentTime);holdGain.gain.linearRampToValueAtTime(.012+level*.008,c.currentTime+.06)
+  }
+  function ignitionSound(){stopHoldSound();tone(58,39,1.15,.08,'sawtooth');tone(116,48,1.1,.045,'triangle',.04);tone(940,160,.42,.025,'square',.12);setTimeout(()=>{tone(180,360,.24,.055,'sine');tone(360,720,.34,.038,'sine',.03);tone(720,960,.42,.022,'triangle',.05)},1280)}
+
+  function setLevel(level){for(let i=1;i<=4;i++){device.classList.toggle('level-'+i,i===level);screen.classList.toggle('level-'+i,i===level)}segs.forEach((s,i)=>s.classList.toggle('on',i<level))}
+  function setShoulders(s){leftShoulder.classList.toggle('active',s.phase.startsWith('LEFT')||s.phase==='BOTH_HOLD'||s.phase==='IGNITING');rightShoulder.classList.toggle('active',s.phase.startsWith('RIGHT')||s.phase==='BOTH_HOLD'||s.phase==='IGNITING');leftShoulder.classList.toggle('down',!!s.leftDown);rightShoulder.classList.toggle('down',!!s.rightDown)}
+  function promptFor(s){
+    if(s.phase==='LEFT_TAP')return['INPUT CALIBRATION','TAP L','轻点左肩键'];
+    if(s.phase==='LEFT_HOLD')return['HAPTIC LINK','HOLD L','长按左肩键 · 感受分级震动'];
+    if(s.phase==='RIGHT_TAP')return['INPUT CALIBRATION','TAP R','轻点右肩键'];
+    if(s.phase==='RIGHT_HOLD')return['HAPTIC LINK','HOLD R','长按右肩键 · 感受分级震动'];
+    if(s.phase==='BOTH_HOLD')return['IGNITION ARMED','HOLD L + R','同时长按左右肩键 · 启动 GAME STAR BOX'];
+    if(s.phase==='IGNITING')return['SYSTEM IGNITION','POWERING ON',''];
+    return['SYSTEM READY','GAME STAR BOX',''];
+  }
+  function applyState(s){
+    if(!s)return;latest=s;setShoulders(s);setLevel(s.level||0);const p=promptFor(s);kicker.textContent=p[0];title.textContent=p[1];copy.textContent=p[2];
+    const phaseChanged=s.phase!==lastPhase,levelChanged=s.level!==lastLevel;
+    if(phaseChanged){
+      if(lastPhase==='LEFT_TAP'&&s.phase==='LEFT_HOLD')clickSound('LEFT');
+      if(lastPhase==='RIGHT_TAP'&&s.phase==='RIGHT_HOLD')clickSound('RIGHT');
+      if(s.phase==='RIGHT_TAP')clickSound('LEFT');
+      if(s.phase==='BOTH_HOLD')clickSound('RIGHT');
+    }
+    if((s.phase==='LEFT_HOLD'||s.phase==='RIGHT_HOLD'||s.phase==='BOTH_HOLD')&&levelChanged){holdSound(s.level,s.phase==='RIGHT_HOLD'?'RIGHT':'LEFT')}
+    if((s.phase==='LEFT_HOLD'&&!s.leftDown)||(s.phase==='RIGHT_HOLD'&&!s.rightDown)||(s.phase==='BOTH_HOLD'&&!(s.leftDown&&s.rightDown)))stopHoldSound();
+    if(s.phase==='IGNITING'&&!ignitionStarted)startIgnition();
+    lastPhase=s.phase;lastLevel=s.level;
+  }
+  function startIgnition(){
+    ignitionStarted=true;stopHoldSound();setLevel(4);viewport.classList.add('igniting');ignitionSound();
+    setTimeout(()=>{setLevel(0);viewport.classList.add('branding')},1220);
+    setTimeout(()=>{try{bridge()?.visualComplete()}catch(_){}},1900)
+  }
+  window.onGSBShoulderState=applyState;
+
+  function send(side,down){ensureAudio();try{bridge()?.touch(side,down)}catch(_){}}
+  function bindTouch(el,side){let active=false;el.addEventListener('pointerdown',e=>{active=true;el.setPointerCapture?.(e.pointerId);send(side,true);e.preventDefault()});const up=e=>{if(!active)return;active=false;send(side,false);e.preventDefault()};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up)}
+  bindTouch(document.getElementById('leftTouch'),'LEFT');bindTouch(document.getElementById('rightTouch'),'RIGHT');
+
+  function bootBridgeReady(){
+    let mode='INTERACTIVE';try{mode=bridge()?.mode?.()||'INTERACTIVE'}catch(_){}
+    try{bridge()?.ready()}catch(_){}
+    if(mode==='FAST'){fallback.textContent='HARDWARE PROFILE RESTORED';fallback.classList.add('show');setTimeout(()=>{try{bridge()?.startFast()}catch(_){}},260)}
+    else setTimeout(()=>fallback.classList.add('show'),2500)
+  }
+  if(document.readyState==='complete'||document.readyState==='interactive')setTimeout(bootBridgeReady,0);else window.addEventListener('DOMContentLoaded',bootBridgeReady,{once:true});
+})();
+</script>
+</body>
+</html>
