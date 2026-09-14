@@ -26,6 +26,8 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREF_MOTOR_MIGRATION_DONE = "hardware_motor_migration_0427_v3";
     private static final String PREF_REALISTIC_VISUAL_MIGRATION_DONE = "hardware_realistic_visual_migration_0427_v4";
     private static final String PREF_PLAYGROUND_MIGRATION_DONE = "hardware_playground_migration_0427_v5";
+    private static final String PREF_CINEMATIC_PLAYGROUND_MIGRATION_DONE =
+            "hardware_playground_cinematic_migration_0427_v6";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -39,6 +41,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOneMotorBackedAwakeningAfterPrototype(application);
         forceOneRealisticAwakeningAfterPrototype(application);
         forceOnePlayableHardwarePlayground(application);
+        forceOneCinematicHardwarePlayground(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -118,11 +121,6 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         Log.i(TAG, "one-time realistic hardware awakening migration applied");
     }
 
-    /**
-     * v5 turns the presentation into a playable hardware playground: shoulders first, then motion,
-     * glass interaction, thermal-model interaction and final L+R ignition. Reset once so an
-     * in-place update reaches the interactive pass without clearing user data.
-     */
     private static void forceOnePlayableHardwarePlayground(Application application) {
         SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
         if (prefs.getBoolean(PREF_PLAYGROUND_MIGRATION_DONE, false)) return;
@@ -131,6 +129,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_PLAYGROUND_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time hardware playground migration applied");
+    }
+
+    /**
+     * v6 keeps the same verified hardware contracts but replaces the diagnostic-looking v5
+     * presentation with a directed, spatially staged playable sequence. Reset once so an in-place
+     * install always reaches the director pass without clearing app data.
+     */
+    private static void forceOneCinematicHardwarePlayground(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_CINEMATIC_PLAYGROUND_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_CINEMATIC_PLAYGROUND_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time cinematic hardware playground migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
