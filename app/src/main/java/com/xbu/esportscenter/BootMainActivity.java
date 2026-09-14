@@ -9,18 +9,23 @@ import android.webkit.WebView;
 import com.xbu.esportscenter.core.boot.BootOrchestrator;
 import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.boot.BootSnapshot;
+import com.xbu.esportscenter.core.capability.CapabilityRegistry;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Map;
+
 /**
- * Thin launcher activity that exposes the platform-neutral BootOrchestrator to the local WebView.
- * No privileged or vendor-specific API is exposed to JavaScript.
+ * Thin launcher activity that exposes read-only Core runtime state to the local WebView.
+ * No privileged or vendor-specific control API is exposed to JavaScript.
  */
 public final class BootMainActivity extends MainActivity {
     private BootOrchestrator boot;
+    private CapabilityRegistry capabilities;
     private WebView bootWebView;
     private final BootOrchestrator.Listener bootListener = this::dispatchBootSnapshot;
+    private final CapabilityRegistry.Listener capabilityListener = this::dispatchCapabilitySnapshot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,11 +33,14 @@ public final class BootMainActivity extends MainActivity {
 
         GameStarBoxApplication app = (GameStarBoxApplication) getApplication();
         boot = app.getBootOrchestrator();
+        capabilities = app.getCapabilities();
         boot.addListener(bootListener);
+        capabilities.addListener(capabilityListener);
 
         bootWebView = findWebView(getWindow().getDecorView());
         if (bootWebView != null) {
             bootWebView.addJavascriptInterface(new BootBridge(), "GSBBoot");
+            bootWebView.addJavascriptInterface(new CapabilityBridge(), "GSBCapabilities");
         }
     }
 
@@ -59,6 +67,13 @@ public final class BootMainActivity extends MainActivity {
         }
     }
 
+    private final class CapabilityBridge {
+        @JavascriptInterface
+        public String state() {
+            return capabilities == null ? "{}" : toJson(capabilities.snapshot());
+        }
+    }
+
     private void dispatchBootSnapshot(BootSnapshot snapshot) {
         WebView view = bootWebView;
         if (view == null) return;
@@ -67,6 +82,20 @@ public final class BootMainActivity extends MainActivity {
             if (bootWebView != null) {
                 bootWebView.evaluateJavascript(
                         "window.onGSBBootState&&window.onGSBBootState(" + json + ");",
+                        null
+                );
+            }
+        });
+    }
+
+    private void dispatchCapabilitySnapshot(Map<String, CapabilityRegistry.Entry> snapshot) {
+        WebView view = bootWebView;
+        if (view == null) return;
+        String json = toJson(snapshot);
+        runOnUiThread(() -> {
+            if (bootWebView != null) {
+                bootWebView.evaluateJavascript(
+                        "window.onGSBCapabilityState&&window.onGSBCapabilityState(" + json + ");",
                         null
                 );
             }
@@ -87,11 +116,30 @@ public final class BootMainActivity extends MainActivity {
         return o.toString();
     }
 
+    private static String toJson(Map<String, CapabilityRegistry.Entry> snapshot) {
+        JSONObject root = new JSONObject();
+        try {
+            for (Map.Entry<String, CapabilityRegistry.Entry> item : snapshot.entrySet()) {
+                CapabilityRegistry.Entry entry = item.getValue();
+                JSONObject value = new JSONObject();
+                value.put("availability", entry.availability.name());
+                value.put("detailCode", entry.detailCode);
+                root.put(item.getKey(), value);
+            }
+        } catch (Throwable ignored) {
+        }
+        return root.toString();
+    }
+
     @Override
     protected void onDestroy() {
         if (boot != null) {
             boot.removeListener(bootListener);
             boot = null;
+        }
+        if (capabilities != null) {
+            capabilities.removeListener(capabilityListener);
+            capabilities = null;
         }
         bootWebView = null;
         super.onDestroy();
