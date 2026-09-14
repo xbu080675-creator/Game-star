@@ -1,0 +1,74 @@
+/* Game Star Box runtime scrolling fix.
+ * Keep the console chrome fixed; only content surfaces scroll.
+ */
+.scene,
+.libraryMain,
+.sideMenu,
+.featurePanel,
+.rightPanel,
+.quickBody,
+.gsbGamePickerList {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.scene::-webkit-scrollbar,
+.libraryMain::-webkit-scrollbar,
+.sideMenu::-webkit-scrollbar,
+.featurePanel::-webkit-scrollbar,
+.rightPanel::-webkit-scrollbar,
+.quickBody::-webkit-scrollbar,
+.gsbGamePickerList::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* The shell, top bar and footer remain fixed. Individual scenes own vertical movement. */
+.scene.active {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Grid scenes need min-height:0 on their children or WebView refuses to create a scroll range. */
+.libraryScene,
+.esportsScene,
+.systemScene {
+  min-height: 0;
+}
+.libraryScene.active,
+.esportsScene.active,
+.systemScene.active {
+  overflow: hidden;
+}
+
+.sideMenu,
+.libraryMain,
+.featurePanel,
+.rightPanel {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Home keeps its console composition but may scroll when viewport/scale makes it taller. */
+.homeScene.active {
+  overflow-y: auto;
+  align-content: start;
+}
+
+/* Quick Menu has a fixed header and an independently scrollable body. */
+.quickPanel {
+  min-height: 0;
+}
+.quickBody {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Picker list already had overflow:auto; make touch semantics explicit. */
+.gsbGamePickerList {
+  overflow-y: auto !important;
+}
