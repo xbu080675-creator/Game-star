@@ -80,8 +80,9 @@ jobs:
           grep -q 'getDefaultVibrator' "$MOTOR"
           grep -q 'USAGE_HARDWARE_FEEDBACK' "$MOTOR"
           grep -q '\[GSB-HAPTIC\]' "$MOTOR"
-          grep -q 'motorDriver.onLinkReady' "$ADAPTER"
-          grep -q 'motorDriver.onShoulderInput' "$ADAPTER"
+          grep -q 'HardwareAwakeningMotorDriver' "$ADAPTER"
+          grep -q '\.onLinkReady()' "$ADAPTER"
+          grep -q '\.onShoulderInput(semantic, down, now)' "$ADAPTER"
           if grep -Eq 'frequency\.value=4[0-9]|tone\((58|74|96),|48\+level|startHum\(|humGain' "$BOOT"; then
             echo 'Speaker sub-bass fake-haptic path detected' >&2
             exit 1
