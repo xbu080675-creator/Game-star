@@ -13,6 +13,8 @@ import android.provider.Settings;
 
 import androidx.core.content.FileProvider;
 
+import com.xbu.esportscenter.privileged.ShizukuSelfUpdateAdapter;
+
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -167,9 +169,11 @@ public final class AppUpdateManager {
     private final Context context;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
+    private final ShizukuSelfUpdateAdapter privilegedInstaller;
 
     private volatile Listener listener;
     private volatile Candidate candidate;
+    private volatile File pendingSystemInstallerApk;
     private volatile State state = new State(
             false, false, false, "", 0, "", "", 0, 0, 0,
             "尚未检查更新", null, false
@@ -177,6 +181,7 @@ public final class AppUpdateManager {
 
     public AppUpdateManager(Context context) {
         this.context = context.getApplicationContext();
+        this.privilegedInstaller = new ShizukuSelfUpdateAdapter(this.context);
     }
 
     public void setListener(Listener listener) {
@@ -225,18 +230,8 @@ public final class AppUpdateManager {
         Candidate c = candidate;
         if (c == null || !state.available || state.downloading) return;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                !context.getPackageManager().canRequestPackageInstalls()) {
-            emit(new State(
-                    false, false, true, c.versionName, c.versionCode, c.changelog,
-                    state.sourceLabel, state.progressPercent, state.downloadedBytes, c.size,
-                    "需要允许竞界安装更新包", null, true
-            ));
-            Intent settingsIntent = new Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:" + context.getPackageName())
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(settingsIntent);
+        if (state.requiresInstallPermission && pendingSystemInstallerApk != null) {
+            requestSystemInstallPermission(c);
             return;
         }
 
@@ -253,9 +248,9 @@ public final class AppUpdateManager {
                 emit(new State(
                         false, false, true, c.versionName, c.versionCode, c.changelog,
                         state.sourceLabel, 100, apk.length(), c.size,
-                        "下载与安全校验完成 · 正在打开系统安装器", null, false
+                        "下载与安全校验完成 · 正在准备安装", null, false
                 ));
-                launchInstaller(apk);
+                installVerifiedUpdate(apk, c);
             } catch (Throwable t) {
                 emit(new State(
                         false, false, true, c.versionName, c.versionCode, c.changelog,
@@ -264,6 +259,111 @@ public final class AppUpdateManager {
                 ));
             }
         });
+    }
+
+    public void resumePendingSystemInstall() {
+        File apk = pendingSystemInstallerApk;
+        Candidate c = candidate;
+        if (apk == null || c == null || !apk.isFile()) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                !context.getPackageManager().canRequestPackageInstalls()) {
+            emit(new State(
+                    false, false, true, c.versionName, c.versionCode, c.changelog,
+                    state.sourceLabel, 100, apk.length(), c.size,
+                    "系统安装器兜底仍未获得安装权限", null, true
+            ));
+            return;
+        }
+
+        pendingSystemInstallerApk = null;
+        launchSystemInstaller(apk);
+    }
+
+    private void installVerifiedUpdate(File apk, Candidate c) {
+        privilegedInstaller.installVerifiedSelfUpdate(
+                apk,
+                apk.length(),
+                c.sha256,
+                OFFICIAL_PACKAGE,
+                new ShizukuSelfUpdateAdapter.Callback() {
+                    @Override
+                    public void onStatus(String status) {
+                        emit(new State(
+                                false, false, true, c.versionName, c.versionCode, c.changelog,
+                                state.sourceLabel, 100, apk.length(), c.size,
+                                status, null, false
+                        ));
+                    }
+
+                    @Override
+                    public void onCompleted() {
+                        emit(new State(
+                                false, false, true, c.versionName, c.versionCode, c.changelog,
+                                state.sourceLabel, 100, apk.length(), c.size,
+                                "更新已提交 · Android 将切换到新版本", null, false
+                        ));
+                    }
+
+                    @Override
+                    public void onFallback(String errorCode, String message) {
+                        if (errorCode.contains("PACKAGE-DENIED") ||
+                                errorCode.contains("CANDIDATE-INVALID")) {
+                            emit(new State(
+                                    false, false, true, c.versionName, c.versionCode, c.changelog,
+                                    state.sourceLabel, 100, apk.length(), c.size,
+                                    "特权安装被安全策略阻断", errorCode + " · " + message, false
+                            ));
+                            return;
+                        }
+
+                        emit(new State(
+                                false, false, true, c.versionName, c.versionCode, c.changelog,
+                                state.sourceLabel, 100, apk.length(), c.size,
+                                "Shizuku 不可用 · 切换系统安装器兜底", null, false
+                        ));
+                        launchSystemInstallerOrRequestPermission(apk, c);
+                    }
+                }
+        );
+    }
+
+    private void launchSystemInstallerOrRequestPermission(File apk, Candidate c) {
+        pendingSystemInstallerApk = apk;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                !context.getPackageManager().canRequestPackageInstalls()) {
+            emit(new State(
+                    false, false, true, c.versionName, c.versionCode, c.changelog,
+                    state.sourceLabel, 100, apk.length(), c.size,
+                    "Shizuku 不可用 · 需要允许系统安装器完成更新", null, true
+            ));
+            requestSystemInstallPermission(c);
+            return;
+        }
+
+        pendingSystemInstallerApk = null;
+        launchSystemInstaller(apk);
+    }
+
+    private void requestSystemInstallPermission(Candidate c) {
+        try {
+            Intent settingsIntent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + context.getPackageName())
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(settingsIntent);
+        } catch (Throwable t) {
+            emit(new State(
+                    false, false, true,
+                    c == null ? "" : c.versionName,
+                    c == null ? 0 : c.versionCode,
+                    c == null ? "" : c.changelog,
+                    state.sourceLabel, 100,
+                    pendingSystemInstallerApk == null ? 0 : pendingSystemInstallerApk.length(),
+                    c == null ? 0 : c.size,
+                    "无法打开安装权限设置", shortMessage(t), true
+            ));
+        }
     }
 
     private Candidate fetchPreferredRelease() throws Exception {
@@ -554,6 +654,9 @@ public final class AppUpdateManager {
         if (archiveVersion != c.versionCode) {
             throw new SecurityException("更新包 versionCode 不匹配");
         }
+        if (archiveVersion <= BuildConfig.VERSION_CODE) {
+            throw new SecurityException("更新包不是更高 versionCode");
+        }
 
         Set<String> trusted = installedSignerDigests(pm);
         Set<String> incoming = signerDigests(archive);
@@ -611,7 +714,7 @@ public final class AppUpdateManager {
                 : PackageManager.GET_SIGNATURES;
     }
 
-    private void launchInstaller(File apk) {
+    private void launchSystemInstaller(File apk) {
         mainHandler.post(() -> {
             try {
                 Uri uri = FileProvider.getUriForFile(
@@ -705,6 +808,7 @@ public final class AppUpdateManager {
     }
 
     public void shutdown() {
+        privilegedInstaller.shutdown();
         executor.shutdownNow();
     }
 
