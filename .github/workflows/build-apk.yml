@@ -143,6 +143,30 @@ jobs:
             exit 1
           fi
 
+      - name: Guard installed game catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG='app/src/main/java/com/xbu/esportscenter/platform/android/InstalledGameCatalog.java'
+          BRIDGE='app/src/main/java/com/xbu/esportscenter/BootMainActivity.java'
+          UI='app/src/main/assets/game-library.js'
+          MANIFEST='app/src/main/AndroidManifest.xml'
+          test -f "$CATALOG" -a -f "$BRIDGE" -a -f "$UI"
+          grep -q 'Intent.CATEGORY_LAUNCHER' "$CATALOG"
+          grep -q 'createValidatedLaunchIntent' "$CATALOG"
+          grep -q 'isVisibleLauncherPackage' "$CATALOG"
+          grep -q 'GSBGames' "$BRIDGE"
+          grep -q 'gsb.manualGames.v1' "$UI"
+          grep -q 'android.intent.category.LAUNCHER' "$MANIFEST"
+          if grep -q 'android.permission.QUERY_ALL_PACKAGES' "$MANIFEST"; then
+            echo 'Broad QUERY_ALL_PACKAGES is forbidden for the game catalog' >&2
+            exit 1
+          fi
+          if grep -Eqi 'ProcessBuilder|Runtime\.getRuntime|rikka\.shizuku|Settings\.(Global|Secure|System)\.put' "$CATALOG"; then
+            echo 'Installed game catalog must stay non-privileged' >&2
+            exit 1
+          fi
+
       - name: Guard Boot Orchestrator boundary
         shell: bash
         run: |
@@ -233,7 +257,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.18：REDMAGIC 原生入口只读审计。Android 11+ 增加对 cn.nubia.gamelauncher / cn.nubia.gameassist 的精确 package visibility；新增只读 exported Activity/Receiver/Service/Provider 元数据审计，按性能、通知屏蔽、内存、网络与 Game Tools 分类候选入口。只发现候选不代表可控，语义 capability 继续保持 UNKNOWN；本版不启动/绑定/调用厂商组件，不写 Settings，不调用 Shizuku，不执行 shell。"
+              "changelog": "0.4.19：真实游戏库 Phase 1。移除首页和游戏库的默认示例游戏数据，改为读取本机 MAIN/LAUNCHER 应用并用 Android 游戏分类自动识别；支持从本机可启动应用中手动添加/移除非标准分类游戏，显示真实应用图标/名称/包名并从竞界直接启动。启动目标严格限制在本次枚举的 launcher allow-list；未申请 QUERY_ALL_PACKAGES，不新增 Shizuku/shell/系统写权限。每版本继续独立开发留档。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -279,13 +303,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.18 开始审计 REDMAGIC Game Space/Game Assist 的 exported 原生入口，只读取包元数据并分类候选；未验证调用契约前所有语义控制 capability 继续保持 UNKNOWN。本版不启动/绑定/调用厂商组件，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.19 将首页与游戏库从默认示例数据切换为本机真实游戏/用户手动添加的 launcher 应用，并通过受限 GSBGames 桥启动；启动包必须来自当前枚举 allow-list，不申请 QUERY_ALL_PACKAGES，不扩大 Shizuku/REDMAGIC 权限面。独立开发记录见 docs/versions/0.4.19.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.18 开始审计 REDMAGIC Game Space/Game Assist 的 exported 原生入口，只读取包元数据并分类候选；未验证调用契约前所有语义控制 capability 继续保持 UNKNOWN。本版不启动/绑定/调用厂商组件，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.19 将首页与游戏库从默认示例数据切换为本机真实游戏/用户手动添加的 launcher 应用，并通过受限 GSBGames 桥启动；启动包必须来自当前枚举 allow-list，不申请 QUERY_ALL_PACKAGES，不扩大 Shizuku/REDMAGIC 权限面。独立开发记录见 docs/versions/0.4.19.md。" \
               --prerelease
           fi
