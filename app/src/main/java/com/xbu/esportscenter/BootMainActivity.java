@@ -122,10 +122,27 @@ public final class BootMainActivity extends MainActivity {
     protected void onResume() {
         super.onResume();
         if (gameLauncher != null) gameLauncher.onHostResumed();
+        if (shoulderBootView != null) shoulderBootView.onResume();
         if (shoulderBootActive && shoulderBoot != null) {
+            dispatchShoulderSnapshot(shoulderBoot.snapshot());
             bootHandler.removeCallbacks(shoulderTick);
             bootHandler.post(shoulderTick);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        if (shoulderBootActive) {
+            bootHandler.removeCallbacks(shoulderTick);
+            cancelBootVibration();
+            if (shoulderBoot != null) {
+                ShoulderBootStateMachine.Snapshot snapshot = shoulderBoot.cancelActivePresses();
+                dispatchShoulderSnapshot(snapshot);
+                lastHapticLevel = -1;
+            }
+        }
+        if (shoulderBootView != null) shoulderBootView.onPause();
+        super.onPause();
     }
 
     @Override
@@ -406,7 +423,11 @@ public final class BootMainActivity extends MainActivity {
         Vibrator vibrator = bootVibrator();
         if (vibrator == null || !vibrator.hasVibrator()) return;
         try {
-            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK));
+            } else {
+                vibrator.vibrate(VibrationEffect.createOneShot(28L, 145));
+            }
         } catch (Throwable ignored) {
         }
     }
