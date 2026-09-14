@@ -276,7 +276,12 @@ public class MainActivity extends Activity {
             updateLater.setText("隐藏");
             updateLater.setEnabled(true);
             updateAction.setEnabled(false);
-            updateAction.setText("等待系统安装确认");
+            boolean privilegedStage = state.status.contains("Shizuku")
+                    || state.status.contains("安全安装服务")
+                    || state.status.contains("正在应用")
+                    || state.status.contains("静默提交")
+                    || state.status.contains("更新已提交");
+            updateAction.setText(privilegedStage ? "正在应用更新" : "等待系统安装确认");
         } else {
             updateLater.setText("稍后");
             updateLater.setEnabled(true);
@@ -627,7 +632,7 @@ public class MainActivity extends Activity {
             updatePermissionFlowPending = false;
             if (allowed && updateManager != null) {
                 new Handler(Looper.getMainLooper()).postDelayed(
-                        updateManager::downloadAndInstall,
+                        updateManager::resumePendingSystemInstall,
                         180L
                 );
             }
