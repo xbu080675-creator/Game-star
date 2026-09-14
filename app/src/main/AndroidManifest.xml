@@ -32,16 +32,23 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".BootMainActivity"
             android:theme="@style/Theme.EsportsCenter.Starting"
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:resizeableActivity="false"
+            android:exported="false" />
+
+        <!-- Preserve the historical .MainActivity component for launcher/OTA restart compatibility. -->
+        <activity-alias
+            android:name=".MainActivity"
+            android:targetActivity=".BootMainActivity"
+            android:theme="@style/Theme.EsportsCenter.Starting"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
     </application>
 </manifest>
