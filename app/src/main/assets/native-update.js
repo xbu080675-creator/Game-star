@@ -65,6 +65,13 @@
     document.head.appendChild(sessionScript);
   }
 
+  if (!document.getElementById('gsb-quick-menu-runtime-js')) {
+    const quickScript = document.createElement('script');
+    quickScript.id = 'gsb-quick-menu-runtime-js';
+    quickScript.src = 'quick-menu-runtime.js';
+    document.head.appendChild(quickScript);
+  }
+
   if (!document.getElementById('gsb-menu-music-js')) {
     const musicScript = document.createElement('script');
     musicScript.id = 'gsb-menu-music-js';
