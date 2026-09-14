@@ -1,5 +1,15 @@
 # Game Star Box Development Changelog
 
+## 0.4.13 / versionCode 26
+
+- 将 Android Launcher/系统 Starting Window 正式纳入 Game Star Box 启动视觉链，消除实机录像中 1~2 秒附近一闪而过的白色 Android/default splash。
+- 新增 `Theme.EsportsCenter.Starting`，Android 8-11 使用纯黑 + Game Star Box 核心标记作为 starting window；Android 12+ 使用平台 SplashScreen API 的黑色背景与自有 `gsb_boot_core` 图形。
+- 新增 `gsb_boot_core.xml` 与 `gsb_boot_preview.xml`，视觉语言与现有 WebView 启动动画保持一致：圆环、中心星形核心、分离菱形、蓝色能量弧。
+- `MainActivity` 启动主题切换为专用 Starting Theme；应用级正式主题、WebView UI、启动音效、触觉节点和 OTA 界面不变。
+- 本版本只解决 System Splash → WebView Boot 的连续性，不修改已经验收的 4.02 秒音画时间轴，避免把“白闪修复”和“Runtime 驱动动画”两个变量同时混入一次实机验证。
+- 新增 `docs/startup/README.md`，记录启动链、平台差异、安全边界、实机测试矩阵以及下一阶段 Boot Orchestrator 设计。
+- 不新增权限、不调用 Shizuku、不执行 shell、不读写 Settings，不扩大任何 REDMAGIC/Privileged capability。
+
 ## 0.4.12 / versionCode 25
 
 - REDMAGIC Entry 从“只读状态”推进到“语义边沿”：新增平台无关 `GameEntrySource`、`GameEntryRequest`、`GameEntryCoordinator`。
@@ -75,8 +85,8 @@
 - 工程优先级调整为：安全 > 稳定 > 可恢复 > 正确性 > 性能 > 体验 > 开发速度。
 - 特权能力必须隔离在 Privileged Adapter；Core / WebView 禁止直接调用 shell、Shizuku、ADB 或 PackageInstaller 特权接口。
 - 禁止通用 `exec(command)` / 任意 shell 控制台；UI 只允许请求类型化、语义化动作。
-- 当前 Shizuku 白名单仅允许 `com.xbu.esportscenter` 自更新；不得成为通用静默安装器，不影响其他 APP 的系统安装流程。
-- 静默安装前强制执行官方来源、SHA-256、包名、versionCode、签名、PackageManager 可解析性校验，任一失败 Fail Closed。
+- 当前 Shizuku 白名单仅允许 `com.xbu.esportscenter` 自更新；不得成为通用静默安装器，不影响其他 APP 的正常安装流程。
+- 静默安装前强制执行官方来源、SHA-256、包名、versionCode、固定签名、PackageManager 可解析性校验，任一失败 Fail Closed。
 - 明确 Shizuku 未安装、未启动、未授权、权限撤销、Binder 死亡等降级路径；失败时回退系统安装器且普通功能继续可用。
 - 特权安装引入事务状态机、超时/有限重试、session 清理、熔断与本地 kill switch 要求。
 - 新增负向安全测试矩阵和 CI 发布硬门槛；任何特权代码变更必须继续留档。
