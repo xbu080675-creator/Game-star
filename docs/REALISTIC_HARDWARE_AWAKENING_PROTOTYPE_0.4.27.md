@@ -96,3 +96,7 @@ APK SHA-256：
 6. 物理马达仍必须来自机身，蓝牙耳机不得承载所谓“震动”；
 7. 最终点火应体现“外壳闭合 -> 屏幕真正通电 -> GAME STAR BOX”，而不是普通 Logo 转场；
 8. 如果演出不够真实，只继续修改 presentation layer，不允许借机改动 Core / privileged boundary。
+
+## 构建后整理
+
+测试 APK 成功产出后，临时 workflow 已从 `feature/shoulder-ignition-boot` 删除；正式分支只保留演出实现、v4 一次性体验迁移和本留档。PR #1 继续保持 Draft，未合入 `main`。
