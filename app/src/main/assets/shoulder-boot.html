@@ -3,116 +3,95 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
-<title>Game Star Box Boot</title>
+<title>Game Star Box Hardware Awakening</title>
 <style>
-:root{--cyan:#8eeaff;--blue:#4c8dff;--violet:#8e6dff;--white:#f7fbff;--dim:#53606c;--edge:rgba(220,241,255,.28);--level:0}
+:root{--blue:#64b8ff;--cyan:#a9f3ff;--white:#f7fbff;--dim:#587080;--bg:#020408}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font-family:"Segoe UI","PingFang SC",system-ui,sans-serif;user-select:none;touch-action:none}
-body{display:grid;place-items:center}.viewport{position:fixed;inset:0;overflow:hidden;background:#000;display:grid;place-items:center}.ambient{position:absolute;inset:-20%;opacity:.28;background:radial-gradient(circle at 50% 48%,rgba(57,88,155,.12),transparent 28%),radial-gradient(circle at 50% 52%,rgba(116,67,176,.07),transparent 40%);filter:blur(26px);transition:opacity .3s ease}.eyebrow{position:absolute;top:5.4vh;left:0;right:0;text-align:center;font-size:clamp(7px,.75vw,11px);font-weight:700;letter-spacing:.34em;color:#607180;z-index:10}.eyebrow b{color:#9fc3d5}.deviceWrap{position:relative;width:min(82vw,1040px);height:min(58vh,470px);display:grid;place-items:center;perspective:1400px}.device{position:relative;width:86%;height:68%;min-height:230px;border:1px solid rgba(225,240,250,.23);border-radius:30px;background:linear-gradient(180deg,#0b0e12,#050607 70%,#020303);box-shadow:0 30px 90px rgba(0,0,0,.85),inset 0 1px rgba(255,255,255,.05);transform:translateZ(0);will-change:transform}.device:before{content:"";position:absolute;inset:7px;border:1px solid rgba(155,184,203,.07);border-radius:24px;pointer-events:none}.screen{position:absolute;left:5.2%;right:5.2%;top:10%;bottom:10%;border:1px solid rgba(194,222,240,.13);border-radius:18px;overflow:hidden;background:#020608;box-shadow:inset 0 0 0 1px rgba(255,255,255,.015),inset 0 0 80px rgba(30,74,104,.09)}.screenGrid{position:absolute;inset:0;opacity:.12;background-image:linear-gradient(rgba(139,199,232,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(139,199,232,.08) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(to bottom,transparent,black 20%,black 80%,transparent)}.scan{position:absolute;left:0;right:0;height:1px;top:48%;background:linear-gradient(90deg,transparent,rgba(132,219,255,.5),transparent);opacity:.25;box-shadow:0 0 18px rgba(83,188,255,.28)}.center{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px}.prompt{position:relative;z-index:3;transform:translateY(-2px)}.prompt .kicker{font-size:clamp(7px,.8vw,11px);letter-spacing:.3em;color:#597184;margin-bottom:9px}.prompt h1{margin:0;font-size:clamp(25px,4vw,58px);font-weight:760;letter-spacing:.02em;line-height:.95}.prompt p{margin:10px 0 0;font-size:clamp(8px,1vw,13px);letter-spacing:.16em;color:#728595}.prompt .progress{margin:18px auto 0;display:flex;gap:7px;justify-content:center}.seg{width:clamp(30px,4.4vw,56px);height:3px;background:#162029;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);transition:.1s ease}.seg.on{background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 14px rgba(87,191,255,.46)}.shoulder{position:absolute;top:-14px;width:29%;height:42px;border:1px solid rgba(208,234,250,.22);background:linear-gradient(180deg,#171c22,#080b0e);box-shadow:0 13px 24px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.05);display:flex;align-items:center;z-index:7;transition:filter .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}.shoulder.left{left:7.5%;border-radius:16px 8px 6px 17px;justify-content:flex-start;padding-left:18px}.shoulder.right{right:7.5%;border-radius:8px 16px 17px 6px;justify-content:flex-end;padding-right:18px}.shoulder .label{font-size:12px;font-weight:900;letter-spacing:.2em;color:#62717d}.shoulder:after{content:"";position:absolute;left:12%;right:12%;bottom:4px;height:2px;background:#17212a;transition:.12s ease}.shoulder.active{border-color:rgba(153,224,255,.8);box-shadow:0 13px 24px rgba(0,0,0,.58),0 0 22px rgba(80,181,255,.25),inset 0 0 24px rgba(78,146,255,.08)}.shoulder.active .label{color:#e9f9ff}.shoulder.active:after{background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 12px rgba(104,207,255,.7)}.shoulder.down{transform:translateY(3px) scaleY(.94);filter:brightness(1.2)}.touchZone{position:absolute;top:-8px;width:36%;height:76px;z-index:20}.touchZone.left{left:3%}.touchZone.right{right:3%}.cornerMark{position:absolute;bottom:14px;font-size:7px;letter-spacing:.2em;color:#3b4954}.cornerMark.left{left:20px}.cornerMark.right{right:20px}.powerEcho{position:absolute;inset:0;border-radius:18px;opacity:0;pointer-events:none;border:1px solid rgba(116,220,255,.3)}.screen.level-1 .powerEcho{animation:echo 1.15s infinite}.screen.level-2 .powerEcho{animation:echo .8s infinite}.screen.level-3 .powerEcho{animation:echo .5s infinite}.screen.level-4 .powerEcho{animation:echo .28s infinite}.device.level-1{animation:micro1 .14s steps(2,end) infinite}.device.level-2{animation:micro2 .11s steps(2,end) infinite}.device.level-3{animation:micro3 .075s steps(2,end) infinite}.device.level-4{animation:micro4 .052s steps(2,end) infinite}.brand{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none;z-index:9}.brandInner{text-align:center}.brandMark{width:120px;height:48px;margin:0 auto 18px;position:relative}.brandMark .rail{position:absolute;top:8px;width:37px;height:32px;border:2px solid #eaf8ff;opacity:.95}.brandMark .rail.l{left:0;border-radius:15px 5px 5px 15px;border-right:0}.brandMark .rail.r{right:0;border-radius:5px 15px 15px 5px;border-left:0}.brandMark .core{position:absolute;left:35px;right:35px;top:4px;bottom:4px;border:2px solid #eaf8ff;box-shadow:0 0 22px rgba(123,213,255,.3)}.brandMark .core:after{content:"";position:absolute;width:7px;height:7px;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);background:#fff;box-shadow:0 0 14px #aeeaff}.brand b{display:block;font-size:clamp(24px,3vw,45px);letter-spacing:.22em;margin-right:-.22em}.brand small{display:block;margin-top:9px;font-size:7px;letter-spacing:.34em;color:#667985}.viewport.igniting .prompt{animation:promptOut .22s ease forwards}.viewport.igniting .shoulder.left{animation:leftIgnite 1.18s cubic-bezier(.22,.75,.18,1) forwards}.viewport.igniting .shoulder.right{animation:rightIgnite 1.18s cubic-bezier(.22,.75,.18,1) forwards}.viewport.igniting .screen{animation:screenIgnite 1.35s cubic-bezier(.2,.82,.2,1) forwards}.viewport.igniting .device{animation:wholeIgnite .045s steps(2,end) infinite}.viewport.igniting .ambient{animation:ambientIgnite 1.3s ease forwards}.viewport.branding .device{animation:none;opacity:0;transition:opacity .08s linear}.viewport.branding .brand{animation:brandIn .52s cubic-bezier(.2,.82,.2,1) forwards}.hint{position:absolute;bottom:5.5vh;left:0;right:0;text-align:center;font-size:7px;letter-spacing:.2em;color:#36434d}.hint span{color:#617481}.devFallback{position:absolute;bottom:11vh;left:0;right:0;text-align:center;font-size:7px;color:#25323a;letter-spacing:.1em}.devFallback.show{color:#526672}
-@keyframes echo{0%{opacity:0;transform:scale(.92)}35%{opacity:.36}100%{opacity:0;transform:scale(1.03)}}
-@keyframes micro1{0%{transform:translateX(-.2px)}100%{transform:translateX(.2px)}}
-@keyframes micro2{0%{transform:translate(-.45px,.15px)}100%{transform:translate(.45px,-.15px)}}
-@keyframes micro3{0%{transform:translate(-.9px,.35px)}100%{transform:translate(.9px,-.35px)}}
-@keyframes micro4{0%{transform:translate(-1.6px,.7px) rotate(-.035deg)}100%{transform:translate(1.6px,-.7px) rotate(.035deg)}}
-@keyframes promptOut{to{opacity:0;transform:scale(.96)}}
-@keyframes leftIgnite{0%{transform:none}55%{transform:translateX(16px) translateY(2px);filter:brightness(1.4)}100%{transform:translateX(46%) scaleX(.72);opacity:0}}
-@keyframes rightIgnite{0%{transform:none}55%{transform:translateX(-16px) translateY(2px);filter:brightness(1.4)}100%{transform:translateX(-46%) scaleX(.72);opacity:0}}
-@keyframes screenIgnite{0%{box-shadow:inset 0 0 80px rgba(30,74,104,.09)}35%{box-shadow:inset 0 0 110px rgba(57,123,180,.22),0 0 25px rgba(93,194,255,.12)}70%{filter:brightness(1.65);transform:scale(.998)}78%{filter:brightness(.1);background:#000}100%{filter:brightness(0);background:#000}}
-@keyframes wholeIgnite{0%{transform:translate(-2.2px,.7px)}100%{transform:translate(2.2px,-.7px)}}
-@keyframes ambientIgnite{0%{opacity:.28}60%{opacity:.78}76%{opacity:0}100%{opacity:0}}
-@keyframes brandIn{0%{opacity:0;transform:scale(.965)}18%{opacity:1}60%{transform:scale(1.015)}100%{opacity:1;transform:none}}
-@media(max-height:520px){.deviceWrap{height:67vh}.device{height:72%;min-height:210px}.eyebrow{top:3.5vh}.hint{bottom:3.5vh}.devFallback{bottom:8vh}.shoulder{height:34px;top:-11px}.touchZone{height:58px}.prompt h1{font-size:34px}}
+body{display:grid;place-items:center}.root{position:fixed;inset:0;overflow:hidden;background:radial-gradient(circle at 50% 48%,#07131d 0,#020509 26%,#000 64%)}
+.stars{position:absolute;inset:0;opacity:.24;background-image:radial-gradient(circle,#8fcfff 0 1px,transparent 1.4px),radial-gradient(circle,#fff 0 1px,transparent 1.3px);background-size:91px 91px,137px 137px;background-position:13px 27px,61px 48px;mask-image:radial-gradient(circle at 50% 50%,#000,transparent 72%)}
+.top{position:absolute;top:5.5vh;left:0;right:0;text-align:center;font-size:7px;letter-spacing:.34em;color:#526777}.top b{color:#a4cfe4}.stage{position:absolute;inset:12vh 7vw 12vh;display:grid;place-items:center}.phone{position:relative;width:min(78vw,1050px);height:min(53vh,430px);min-height:230px;border:1px solid rgba(207,234,248,.2);border-radius:34px;background:linear-gradient(180deg,#0a0e13,#030507);box-shadow:0 35px 110px rgba(0,0,0,.78),inset 0 1px rgba(255,255,255,.04);will-change:transform,filter}
+.phone:before{content:"";position:absolute;inset:9px;border:1px solid rgba(163,205,230,.06);border-radius:27px}.display{position:absolute;left:5.1%;right:5.1%;top:10%;bottom:10%;overflow:hidden;border-radius:20px;border:1px solid rgba(168,210,234,.13);background:radial-gradient(circle at 50% 50%,rgba(38,106,156,.08),transparent 33%),#020608;box-shadow:inset 0 0 90px rgba(49,122,170,.08)}
+.grid{position:absolute;inset:0;opacity:.08;background-image:linear-gradient(rgba(130,197,230,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(130,197,230,.12) 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
+.shoulder{position:absolute;top:-17px;width:28%;height:46px;border:1px solid rgba(211,236,249,.22);background:linear-gradient(180deg,#161c23,#070a0d);box-shadow:0 13px 28px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.05);z-index:8;transition:.18s ease}.shoulder.left{left:7%;border-radius:18px 8px 6px 19px}.shoulder.right{right:7%;border-radius:8px 18px 19px 6px}.shoulder span{position:absolute;top:50%;transform:translateY(-50%);font-size:11px;font-weight:900;letter-spacing:.2em;color:#566875}.shoulder.left span{left:20px}.shoulder.right span{right:20px}.shoulder:after{content:"";position:absolute;left:12%;right:12%;bottom:5px;height:2px;background:#17222a;transition:.15s ease}.shoulder.awake{border-color:rgba(128,215,255,.72);box-shadow:0 13px 28px rgba(0,0,0,.58),0 0 30px rgba(79,178,255,.26),inset 0 0 28px rgba(74,158,255,.09)}.shoulder.awake span{color:#effbff}.shoulder.awake:after{background:linear-gradient(90deg,#4b90ff,#a7f3ff);box-shadow:0 0 14px rgba(100,211,255,.8)}.shoulder.down{transform:translateY(3px) scaleY(.94);filter:brightness(1.28)}
+.jet{position:absolute;top:25px;width:34%;height:10px;opacity:0;filter:blur(.2px);pointer-events:none}.jet.left{left:8%;background:linear-gradient(90deg,rgba(104,210,255,.92),rgba(69,124,255,.28),transparent);transform-origin:left}.jet.right{right:8%;background:linear-gradient(270deg,rgba(104,210,255,.92),rgba(69,124,255,.28),transparent);transform-origin:right}.shoulder.awake+.jet{animation:jetPulse .9s ease-out}
+.bus{position:absolute;top:50%;height:2px;width:32%;background:rgba(100,180,220,.11)}.bus.left{left:7%}.bus.right{right:7%}.fill{height:100%;width:100%;transform:scaleX(0);background:linear-gradient(90deg,#4d87ff,#b4f5ff);box-shadow:0 0 18px rgba(102,212,255,.62);transition:transform .06s linear}.bus.left .fill{transform-origin:left}.bus.right .fill{transform-origin:right;background:linear-gradient(270deg,#4d87ff,#b4f5ff)}
+.core{position:absolute;left:50%;top:50%;width:96px;height:96px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(155,216,244,.18);box-shadow:0 0 0 18px rgba(79,151,203,.025),0 0 80px rgba(71,161,221,.07)}.core:before,.core:after{content:"";position:absolute;inset:15px;border-radius:50%;border:1px solid rgba(130,204,236,.15)}.core:after{inset:35px;background:#07111a;border-color:rgba(173,226,248,.24);box-shadow:0 0 16px rgba(89,190,255,.08)}.core.live{border-color:rgba(142,226,255,.75);box-shadow:0 0 0 18px rgba(79,151,203,.05),0 0 70px rgba(69,178,255,.3)}.core.live:before{animation:spin 2.2s linear infinite;border-top-color:#9cecff;border-right-color:#5b8fff}.core.ready:after{background:#dff9ff;box-shadow:0 0 24px #85d9ff,0 0 60px rgba(95,157,255,.65)}
+.copy{position:absolute;left:0;right:0;top:57%;text-align:center;z-index:5}.copy small{display:block;font-size:7px;letter-spacing:.32em;color:#537080;margin-bottom:8px}.copy b{display:block;font-size:clamp(18px,2.2vw,31px);font-weight:700;letter-spacing:.1em}.copy p{margin:9px 0 0;font-size:9px;letter-spacing:.14em;color:#718796}.copy.sync b{font-size:clamp(15px,1.8vw,24px);color:#dff8ff}
+.systems{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);display:flex;gap:24px;z-index:6}.sys{display:flex;align-items:center;gap:7px;font-size:6px;letter-spacing:.17em;color:#465762}.lamp{width:5px;height:5px;border-radius:50%;background:#15212a;box-shadow:0 0 0 1px rgba(146,195,219,.12)}.sys.on{color:#8ba9ba}.sys.on .lamp{background:#9cecff;box-shadow:0 0 9px #5db8ff}
+.touch{position:absolute;top:-10px;width:36%;height:82px;z-index:20}.touch.left{left:3%}.touch.right{right:3%}
+.brand{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none}.brandInner{text-align:center}.brandMark{position:relative;width:124px;height:48px;margin:0 auto 17px}.brandMark i{position:absolute;border:2px solid #f4fbff}.brandMark .l{left:0;top:8px;width:38px;height:32px;border-right:0;border-radius:16px 5px 5px 16px}.brandMark .r{right:0;top:8px;width:38px;height:32px;border-left:0;border-radius:5px 16px 16px 5px}.brandMark .c{left:36px;right:36px;top:4px;bottom:4px;box-shadow:0 0 24px rgba(126,216,255,.42)}.brand b{font-size:clamp(24px,3.1vw,46px);letter-spacing:.23em;margin-right:-.23em}.brand small{display:block;margin-top:9px;color:#617684;font-size:7px;letter-spacing:.34em}
+.hint{position:absolute;bottom:5.2vh;left:0;right:0;text-align:center;font-size:6px;letter-spacing:.2em;color:#31404a}.hint span{color:#66808f}.root.armed .core{animation:coreBreath .55s ease-in-out infinite alternate}.root.igniting .copy,.root.igniting .systems{animation:fade .16s forwards}.root.igniting .phone{animation:shake .045s steps(2,end) infinite}.root.igniting .bus .fill{transform:scaleX(1)!important;filter:brightness(1.7)}.root.igniting .core{animation:igniteCore 1.05s cubic-bezier(.18,.82,.16,1) forwards}.root.igniting .shoulder.left{animation:leftIn 1.05s cubic-bezier(.18,.82,.16,1) forwards}.root.igniting .shoulder.right{animation:rightIn 1.05s cubic-bezier(.18,.82,.16,1) forwards}.root.branding .phone{animation:none;opacity:0;transition:opacity .08s linear}.root.branding .brand{animation:brandIn .58s cubic-bezier(.2,.82,.2,1) forwards}
+@keyframes jetPulse{0%{opacity:0;transform:scaleX(.2)}18%{opacity:1}100%{opacity:0;transform:scaleX(1.25)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes coreBreath{to{filter:brightness(1.4);box-shadow:0 0 0 24px rgba(79,151,203,.05),0 0 95px rgba(69,178,255,.42)}}@keyframes fade{to{opacity:0}}@keyframes shake{0%{transform:translate(-2px,.8px)}100%{transform:translate(2px,-.8px)}}@keyframes igniteCore{0%{transform:translate(-50%,-50%) scale(1)}62%{transform:translate(-50%,-50%) scale(1.28);filter:brightness(2)}74%{filter:brightness(.1)}100%{transform:translate(-50%,-50%) scale(.1);opacity:0}}@keyframes leftIn{0%{transform:none}60%{transform:translateX(20px)}100%{transform:translateX(120%) scaleX(.6);opacity:0}}@keyframes rightIn{0%{transform:none}60%{transform:translateX(-20px)}100%{transform:translateX(-120%) scaleX(.6);opacity:0}}@keyframes brandIn{0%{opacity:0;transform:scale(.965)}22%{opacity:1}64%{transform:scale(1.015)}100%{opacity:1;transform:none}}
+@media(max-height:520px){.stage{inset:8vh 6vw 9vh}.phone{height:62vh;min-height:210px}.top{top:3.4vh}.hint{bottom:2.7vh}.systems{bottom:10%}}
 </style>
 </head>
 <body>
-<div class="viewport" id="viewport">
-  <div class="ambient"></div>
-  <div class="eyebrow"><b>GAME STAR BOX</b> // FIRST BOOT // HARDWARE LINK</div>
-  <div class="deviceWrap">
-    <div class="device" id="device">
-      <div class="shoulder left" id="leftShoulder"><span class="label">L</span></div>
-      <div class="shoulder right" id="rightShoulder"><span class="label">R</span></div>
-      <div class="touchZone left" id="leftTouch" aria-label="Left shoulder test zone"></div>
-      <div class="touchZone right" id="rightTouch" aria-label="Right shoulder test zone"></div>
-      <div class="screen" id="screen">
-        <div class="screenGrid"></div><div class="scan"></div><div class="powerEcho"></div>
-        <div class="center"><div class="prompt" id="prompt"><div class="kicker" id="kicker">INPUT CALIBRATION</div><h1 id="title">TAP L</h1><p id="copy">轻点左肩键</p><div class="progress" id="progress"><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div></div></div>
-        <span class="cornerMark left">SHOULDER INPUT</span><span class="cornerMark right">HAPTIC LINK</span>
+<div class="root" id="root">
+  <div class="stars"></div>
+  <div class="top"><b>GAME STAR BOX</b> // HARDWARE AWAKENING</div>
+  <div class="stage">
+    <div class="phone" id="phone">
+      <div class="shoulder left" id="ls"><span>L</span></div><div class="jet left"></div>
+      <div class="shoulder right" id="rs"><span>R</span></div><div class="jet right"></div>
+      <div class="touch left" id="lt"></div><div class="touch right" id="rt"></div>
+      <div class="display">
+        <div class="grid"></div>
+        <div class="bus left"><div class="fill" id="lf"></div></div>
+        <div class="bus right"><div class="fill" id="rf"></div></div>
+        <div class="core" id="core"></div>
+        <div class="copy" id="copy"><small id="kicker">CONTROL SURFACE</small><b id="title">LEFT SHOULDER</b><p id="sub">轻触左肩键，唤醒左侧控制模块</p></div>
+        <div class="systems"><div class="sys" id="sysCore"><i class="lamp"></i>CORE</div><div class="sys" id="sysLibrary"><i class="lamp"></i>LIBRARY</div><div class="sys" id="sysSurface"><i class="lamp"></i>INTERFACE</div></div>
       </div>
     </div>
   </div>
-  <div class="brand" id="brand"><div class="brandInner"><div class="brandMark"><i class="rail l"></i><i class="core"></i><i class="rail r"></i></div><b>GAME STAR BOX</b><small>HARDWARE ONLINE</small></div></div>
-  <div class="devFallback" id="devFallback">实体肩键无响应时，可触摸屏幕顶部 L / R 区域验证本次交互原型</div>
-  <div class="hint">L / R SHOULDER CALIBRATION <span>·</span> DO NOT POWER OFF</div>
+  <div class="brand"><div class="brandInner"><div class="brandMark"><i class="l"></i><i class="c"></i><i class="r"></i></div><b>GAME STAR BOX</b><small>SYSTEM ONLINE</small></div></div>
+  <div class="hint">PHYSICAL CONTROL LINK <span>·</span> FIRST BOOT</div>
 </div>
 <script>
 (() => {
-  const viewport=document.getElementById('viewport'),device=document.getElementById('device'),screen=document.getElementById('screen');
-  const leftShoulder=document.getElementById('leftShoulder'),rightShoulder=document.getElementById('rightShoulder');
-  const title=document.getElementById('title'),copy=document.getElementById('copy'),kicker=document.getElementById('kicker');
-  const segs=[...document.querySelectorAll('.seg')],fallback=document.getElementById('devFallback');
-  let latest=null,lastPhase='',lastLevel=-1,ignitionStarted=false,audio=null,holdOsc=null,holdGain=null,noiseTimer=0;
-
+  const root=document.getElementById('root'),ls=document.getElementById('ls'),rs=document.getElementById('rs');
+  const lf=document.getElementById('lf'),rf=document.getElementById('rf'),core=document.getElementById('core');
+  const copy=document.getElementById('copy'),kicker=document.getElementById('kicker'),title=document.getElementById('title'),sub=document.getElementById('sub');
+  const sys={CORE_RUNTIME:document.getElementById('sysCore'),GAME_CATALOG:document.getElementById('sysLibrary'),MAIN_SURFACE:document.getElementById('sysSurface')};
+  let lastPhase='',lastLevel=-1,ignitionStarted=false,audio=null,hum=null,humGain=null;
   function bridge(){return window.GSBShoulderBoot||null}
-  function ensureAudio(){
-    if(audio)return audio;
-    try{audio=new(window.AudioContext||window.webkitAudioContext)()}catch(_){return null}
-    try{audio.resume()}catch(_){}
-    return audio;
-  }
-  function tone(f1,f2,d,g=.04,type='sine',delay=0){const c=ensureAudio();if(!c)return;const t=c.currentTime+delay,o=c.createOscillator(),a=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,f1),t);o.frequency.exponentialRampToValueAtTime(Math.max(1,f2),t+d);a.gain.setValueAtTime(.0001,t);a.gain.exponentialRampToValueAtTime(g,t+.008);a.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(a).connect(c.destination);o.start(t);o.stop(t+d+.02)}
-  function clickSound(side){tone(side==='LEFT'?420:500,side==='LEFT'?680:810,.075,.055,'triangle');tone(side==='LEFT'?96:112,72,.10,.032,'sine')}
-  function stopHoldSound(){if(holdOsc){try{holdGain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.035);holdOsc.stop(audio.currentTime+.05)}catch(_){}holdOsc=null;holdGain=null}}
-  function holdSound(level,side){
-    if(level<=0){stopHoldSound();return}
-    const c=ensureAudio();if(!c)return;
-    if(!holdOsc){holdOsc=c.createOscillator();holdGain=c.createGain();holdOsc.type='sawtooth';holdGain.gain.value=.0001;holdOsc.connect(holdGain).connect(c.destination);holdOsc.start()}
-    const base=(side==='RIGHT'?57:49)+(level*9);holdOsc.frequency.cancelScheduledValues(c.currentTime);holdOsc.frequency.linearRampToValueAtTime(base,c.currentTime+.06);holdGain.gain.cancelScheduledValues(c.currentTime);holdGain.gain.linearRampToValueAtTime(.012+level*.008,c.currentTime+.06)
-  }
-  function ignitionSound(){stopHoldSound();tone(58,39,1.15,.08,'sawtooth');tone(116,48,1.1,.045,'triangle',.04);tone(940,160,.42,.025,'square',.12);setTimeout(()=>{tone(180,360,.24,.055,'sine');tone(360,720,.34,.038,'sine',.03);tone(720,960,.42,.022,'triangle',.05)},1280)}
-
-  function setLevel(level){for(let i=1;i<=4;i++){device.classList.toggle('level-'+i,i===level);screen.classList.toggle('level-'+i,i===level)}segs.forEach((s,i)=>s.classList.toggle('on',i<level))}
-  function setShoulders(s){leftShoulder.classList.toggle('active',s.phase.startsWith('LEFT')||s.phase==='BOTH_HOLD'||s.phase==='IGNITING');rightShoulder.classList.toggle('active',s.phase.startsWith('RIGHT')||s.phase==='BOTH_HOLD'||s.phase==='IGNITING');leftShoulder.classList.toggle('down',!!s.leftDown);rightShoulder.classList.toggle('down',!!s.rightDown)}
-  function promptFor(s){
-    if(s.phase==='LEFT_TAP')return['INPUT CALIBRATION','TAP L','轻点左肩键'];
-    if(s.phase==='LEFT_HOLD')return['HAPTIC LINK','HOLD L','长按左肩键 · 感受分级震动'];
-    if(s.phase==='RIGHT_TAP')return['INPUT CALIBRATION','TAP R','轻点右肩键'];
-    if(s.phase==='RIGHT_HOLD')return['HAPTIC LINK','HOLD R','长按右肩键 · 感受分级震动'];
-    if(s.phase==='BOTH_HOLD')return['IGNITION ARMED','HOLD L + R','同时长按左右肩键 · 启动 GAME STAR BOX'];
-    if(s.phase==='IGNITING')return['SYSTEM IGNITION','POWERING ON',''];
-    return['SYSTEM READY','GAME STAR BOX',''];
-  }
-  function applyState(s){
-    if(!s)return;latest=s;setShoulders(s);setLevel(s.level||0);const p=promptFor(s);kicker.textContent=p[0];title.textContent=p[1];copy.textContent=p[2];
-    const phaseChanged=s.phase!==lastPhase,levelChanged=s.level!==lastLevel;
-    if(phaseChanged){
-      if(lastPhase==='LEFT_TAP'&&s.phase==='LEFT_HOLD')clickSound('LEFT');
-      if(lastPhase==='RIGHT_TAP'&&s.phase==='RIGHT_HOLD')clickSound('RIGHT');
-      if(s.phase==='RIGHT_TAP')clickSound('LEFT');
-      if(s.phase==='BOTH_HOLD')clickSound('RIGHT');
+  function ctx(){if(audio)return audio;try{audio=new(window.AudioContext||window.webkitAudioContext)();audio.resume()}catch(_){audio=null}return audio}
+  function tone(a,b,d,g=.035,type='sine'){const c=ctx();if(!c)return;const t=c.currentTime,o=c.createOscillator(),v=c.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,a),t);o.frequency.exponentialRampToValueAtTime(Math.max(1,b),t+d);v.gain.setValueAtTime(.0001,t);v.gain.exponentialRampToValueAtTime(g,t+.008);v.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(v).connect(c.destination);o.start(t);o.stop(t+d+.03)}
+  function click(side){tone(side==='L'?440:520,side==='L'?760:860,.08,.05,'triangle');tone(side==='L'?92:108,66,.12,.025)}
+  function lock(){tone(540,940,.12,.045,'sine');setTimeout(()=>tone(880,1320,.1,.03,'sine'),80)}
+  function startHum(level){const c=ctx();if(!c)return;stopHum();hum=c.createOscillator();humGain=c.createGain();hum.type='sawtooth';hum.frequency.value=48+level*11;humGain.gain.value=.006+level*.005;hum.connect(humGain).connect(c.destination);hum.start()}
+  function stopHum(){if(hum){try{humGain.gain.exponentialRampToValueAtTime(.0001,(audio?audio.currentTime:0)+.04);hum.stop((audio?audio.currentTime:0)+.05)}catch(_){}hum=null;humGain=null}}
+  function setText(k,t,s,sync=false){kicker.textContent=k;title.textContent=t;sub.textContent=s;copy.classList.toggle('sync',sync)}
+  function setCharge(el,p){el.style.transform=`scaleX(${Math.max(0,Math.min(1,(p||0)/100))})`}
+  function applyPhase(s){
+    if(!s)return;ls.classList.toggle('down',!!s.leftDown);rs.classList.toggle('down',!!s.rightDown);
+    ls.classList.toggle('awake',s.phase!=='LEFT_TAP'||!!s.leftDown);rs.classList.toggle('awake',['RIGHT_HOLD','BOTH_HOLD','ARMED','IGNITING','COMPLETE'].includes(s.phase)||!!s.rightDown||s.leftCalibrated);
+    core.classList.toggle('live',['BOTH_HOLD','ARMED','IGNITING','COMPLETE'].includes(s.phase));core.classList.toggle('ready',['ARMED','IGNITING','COMPLETE'].includes(s.phase));
+    root.classList.toggle('armed',s.phase==='ARMED');
+    if(s.phase==='LEFT_TAP'){setCharge(lf,0);setCharge(rf,0);setText('CONTROL SURFACE','LEFT SHOULDER','轻触左肩键，唤醒左侧控制模块')}
+    else if(s.phase==='LEFT_HOLD'){setCharge(lf,s.progress);setText('POWER TEST','LEFT MODULE',s.progress>=100?'松开肩键，锁定左侧模块':'长按左肩键，让模块完成上电')}
+    else if(s.phase==='RIGHT_TAP'){setCharge(lf,100);setText('CONTROL SURFACE','RIGHT SHOULDER','轻触右肩键，唤醒右侧控制模块')}
+    else if(s.phase==='RIGHT_HOLD'){setCharge(lf,100);setCharge(rf,s.progress);setText('POWER TEST','RIGHT MODULE',s.progress>=100?'松开肩键，锁定右侧模块':'长按右肩键，让模块完成上电')}
+    else if(s.phase==='BOTH_HOLD'){setCharge(lf,100);setCharge(rf,100);setText('CONTROL LINK','L + R','同时压住左右肩键，连接整机控制核心')}
+    else if(s.phase==='ARMED'){setCharge(lf,100);setCharge(rf,100);setText('SYSTEM LINK','CORE SYNCHRONIZING','控制模块已锁定 · 正在完成系统同步',true)}
+    else if(s.phase==='IGNITING')beginIgnition();
+    if(s.phase!==lastPhase){
+      if(s.phase==='LEFT_HOLD')click('L');
+      if(s.phase==='RIGHT_TAP'){lock();click('R')}
+      if(s.phase==='BOTH_HOLD')lock();
+      if(s.phase==='ARMED')lock();
+      lastPhase=s.phase;
     }
-    if((s.phase==='LEFT_HOLD'||s.phase==='RIGHT_HOLD'||s.phase==='BOTH_HOLD')&&levelChanged){holdSound(s.level,s.phase==='RIGHT_HOLD'?'RIGHT':'LEFT')}
-    if((s.phase==='LEFT_HOLD'&&!s.leftDown)||(s.phase==='RIGHT_HOLD'&&!s.rightDown)||(s.phase==='BOTH_HOLD'&&!(s.leftDown&&s.rightDown)))stopHoldSound();
-    if(s.phase==='IGNITING'&&!ignitionStarted)startIgnition();
-    lastPhase=s.phase;lastLevel=s.level;
+    if(['LEFT_HOLD','RIGHT_HOLD','BOTH_HOLD'].includes(s.phase)&&s.level>0&&s.level!==lastLevel)startHum(s.level);else if(!['LEFT_HOLD','RIGHT_HOLD','BOTH_HOLD'].includes(s.phase))stopHum();
+    lastLevel=s.level;
   }
-  function startIgnition(){
-    ignitionStarted=true;stopHoldSound();setLevel(4);viewport.classList.add('igniting');ignitionSound();
-    setTimeout(()=>{setLevel(0);viewport.classList.add('branding')},1220);
-    setTimeout(()=>{try{bridge()?.visualComplete()}catch(_){}},1900)
-  }
-  window.onGSBShoulderState=applyState;
-
-  function send(side,down){ensureAudio();try{bridge()?.touch(side,down)}catch(_){}}
-  function bindTouch(el,side){let active=false;el.addEventListener('pointerdown',e=>{active=true;el.setPointerCapture?.(e.pointerId);send(side,true);e.preventDefault()});const up=e=>{if(!active)return;active=false;send(side,false);e.preventDefault()};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up)}
-  bindTouch(document.getElementById('leftTouch'),'LEFT');bindTouch(document.getElementById('rightTouch'),'RIGHT');
-
-  function bootBridgeReady(){
-    let mode='INTERACTIVE';try{mode=bridge()?.mode?.()||'INTERACTIVE'}catch(_){}
-    try{bridge()?.ready()}catch(_){}
-    if(mode==='FAST'){fallback.textContent='HARDWARE PROFILE RESTORED';fallback.classList.add('show');setTimeout(()=>{try{bridge()?.startFast()}catch(_){}},260)}
-    else setTimeout(()=>fallback.classList.add('show'),2500)
-  }
-  if(document.readyState==='complete'||document.readyState==='interactive')setTimeout(bootBridgeReady,0);else window.addEventListener('DOMContentLoaded',bootBridgeReady,{once:true});
+  function beginIgnition(){if(ignitionStarted)return;ignitionStarted=true;stopHum();root.classList.remove('armed');root.classList.add('igniting');tone(58,31,.55,.08,'sawtooth');setTimeout(()=>tone(96,38,.48,.1,'sine'),300);setTimeout(()=>{root.classList.remove('igniting');root.classList.add('branding');tone(210,620,.24,.07,'triangle');tone(74,46,.3,.07,'sine')},1080);setTimeout(()=>{try{bridge()&&bridge().visualComplete()}catch(_){}},1820)}
+  function touch(el,side){el.addEventListener('pointerdown',e=>{e.preventDefault();try{ctx();bridge()&&bridge().touch(side,true)}catch(_){}});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,e=>{e.preventDefault();try{bridge()&&bridge().touch(side,false)}catch(_){}}))}
+  touch(document.getElementById('lt'),'LEFT');touch(document.getElementById('rt'),'RIGHT');
+  window.onGSBShoulderState=applyPhase;
+  window.onGSBProvisioningState=s=>{const done=new Set((s&&s.completed)||[]);Object.entries(sys).forEach(([k,el])=>el&&el.classList.toggle('on',done.has(k)))};
+  function boot(){const b=bridge();if(!b){setTimeout(boot,40);return}try{b.ready()}catch(_){}let mode='INTERACTIVE';try{mode=b.mode()}catch(_){}if(mode==='FAST'){setText('SYSTEM WAKE','GAME STAR BOX','正在唤醒已配对硬件',true);setTimeout(()=>{try{b.startFast()}catch(_){}},180)}}
+  boot();
 })();
 </script>
 </body>
