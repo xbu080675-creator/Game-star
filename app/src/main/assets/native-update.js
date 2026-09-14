@@ -23,10 +23,6 @@
       if (raw) applyBootState(JSON.parse(raw));
     } catch (_) {}
     try { GSBBoot.webViewReady(); } catch (_) {}
-
-    // No periodic JS<->native bridge polling during the boot animation. Native pushes semantic
-    // boot snapshots when they change; polling used to create avoidable main-thread work while
-    // WebView was trying to render the branded startup sequence.
   }
 
   function injectScriptOnce(id, src) {
@@ -46,10 +42,23 @@
     document.head.appendChild(link);
   }
 
+  function externalBootGateOpen() {
+    try {
+      if (!window.GSBRuntime || !GSBRuntime.bootGateOpen) return true;
+      return !!GSBRuntime.bootGateOpen();
+    } catch (_) {
+      return false;
+    }
+  }
+
   function loadPostBootRuntime() {
     if (window.__gsbPostBootRuntimeLoaded) return;
-    window.__gsbPostBootRuntimeLoaded = true;
+    if (!externalBootGateOpen()) {
+      setTimeout(loadPostBootRuntime, 80);
+      return;
+    }
 
+    window.__gsbPostBootRuntimeLoaded = true;
     try { if (window.GSBRuntime) GSBRuntime.ready(); } catch (_) {}
 
     const start = () => {
@@ -79,6 +88,8 @@
     });
     observer.observe(boot, { attributes: true, attributeFilter: ['class'] });
 
+    // Legacy fallback now only releases the WebView-side wait. The native hardware boot gate still
+    // has to open, so a slow first-run shoulder calibration cannot accidentally start runtime work.
     setTimeout(() => {
       observer.disconnect();
       loadPostBootRuntime();
