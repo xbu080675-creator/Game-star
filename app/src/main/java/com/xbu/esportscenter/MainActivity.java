@@ -4,18 +4,16 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -28,8 +26,6 @@ public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView webView;
-    private final Handler hapticHandler = new Handler(Looper.getMainLooper());
-    private boolean bootHapticsScheduled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,16 +84,9 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
+        webView.addJavascriptInterface(new NativeBridge(), "GSBNative");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                if (url != null && url.endsWith("/index.html")) {
-                    scheduleBootHaptics();
-                }
-            }
-
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                 final boolean didCrash = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && detail.didCrash();
@@ -120,30 +109,14 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    private void scheduleBootHaptics() {
-        if (bootHapticsScheduled || !isSystemHapticsEnabled()) return;
-        bootHapticsScheduled = true;
-
-        // Three restrained pulses aligned with the visual boot sequence:
-        // wake -> core lock -> brand/system online.
-        hapticHandler.postDelayed(() -> pulse(12, 38), 450);
-        hapticHandler.postDelayed(() -> pulse(18, 58), 1920);
-        hapticHandler.postDelayed(() -> pulse(28, 78), 3090);
-    }
-
-    private boolean isSystemHapticsEnabled() {
-        try {
-            return Settings.System.getInt(
-                    getContentResolver(),
-                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
-                    1
-            ) == 1;
-        } catch (Throwable ignored) {
-            return true;
+    private class NativeBridge {
+        @JavascriptInterface
+        public void haptic(String cue) {
+            runOnUiThread(() -> emitHaptic(cue));
         }
     }
 
-    private void pulse(int durationMs, int amplitude) {
+    private void emitHaptic(String cue) {
         try {
             Vibrator vibrator;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -153,10 +126,21 @@ public class MainActivity extends Activity {
             } else {
                 vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             }
+            if (vibrator == null || !vibrator.hasVibrator()) return;
 
-            if (vibrator != null && vibrator.hasVibrator()) {
-                vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
+            VibrationEffect effect;
+            if ("wake".equals(cue)) {
+                effect = VibrationEffect.createOneShot(24, 105);
+            } else if ("lock".equals(cue)) {
+                effect = VibrationEffect.createOneShot(32, 135);
+            } else if ("online".equals(cue)) {
+                long[] timings = new long[]{0, 28, 34, 38};
+                int[] amplitudes = new int[]{0, 125, 0, 155};
+                effect = VibrationEffect.createWaveform(timings, amplitudes, -1);
+            } else {
+                effect = VibrationEffect.createOneShot(22, 120);
             }
+            vibrator.vibrate(effect);
         } catch (Throwable ignored) {
         }
     }
@@ -237,7 +221,6 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        hapticHandler.removeCallbacksAndMessages(null);
         if (webView != null) {
             webView.destroy();
             webView = null;
