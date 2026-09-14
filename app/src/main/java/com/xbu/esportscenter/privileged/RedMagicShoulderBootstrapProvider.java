@@ -24,6 +24,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String PREF_SAR_MIGRATION_DONE = "shoulder_sar_migration_0427_v1";
     private static final String PREF_AWAKENING_MIGRATION_DONE = "hardware_awakening_migration_0427_v2";
     private static final String PREF_MOTOR_MIGRATION_DONE = "hardware_motor_migration_0427_v3";
+    private static final String PREF_REALISTIC_VISUAL_MIGRATION_DONE = "hardware_realistic_visual_migration_0427_v4";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -35,6 +36,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOneSarCalibrationAfterPrototype(application);
         forceOneHardwareAwakeningAfterPrototype(application);
         forceOneMotorBackedAwakeningAfterPrototype(application);
+        forceOneRealisticAwakeningAfterPrototype(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -117,6 +119,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_MOTOR_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time physical motor awakening migration applied");
+    }
+
+    /**
+     * The first Hardware Awakening visual pass was intentionally abstract. Reset the first-boot
+     * presentation exactly once so an in-place install exercises the realistic phone cutaway pass
+     * without clearing app data. This does not alter the REDMAGIC scene or privilege contract.
+     */
+    private static void forceOneRealisticAwakeningAfterPrototype(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_REALISTIC_VISUAL_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_REALISTIC_VISUAL_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time realistic hardware awakening migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
