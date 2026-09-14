@@ -14,12 +14,12 @@
     </style>
 
     <!--
-      Launcher/starting-window theme. On Android 8-11 this preview is already the first
-      frame of Game Star Box instead of a vendor/default light window. Android 12+
-      overrides the same style name in values-v31 with the platform SplashScreen attrs.
+      Launcher/starting-window theme. The approved WebView boot animation owns all
+      visible brand motion. The platform layer contributes only the exact first-frame
+      black field so Android never exposes a vendor/default splash or a second logo.
     -->
     <style name="Theme.EsportsCenter.Starting" parent="Theme.EsportsCenter">
-        <item name="android:windowBackground">@drawable/gsb_boot_preview</item>
+        <item name="android:windowBackground">#000000</item>
         <item name="android:navigationBarColor">#000000</item>
         <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
