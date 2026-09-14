@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -114,34 +115,64 @@ public class MainActivity extends Activity {
         public void haptic(String cue) {
             runOnUiThread(() -> emitHaptic(cue));
         }
+
+        @JavascriptInterface
+        public boolean canHaptic() {
+            return canUseRefinedHaptics();
+        }
+    }
+
+    private boolean isSystemHapticsEnabled() {
+        try {
+            return Settings.System.getInt(
+                    getContentResolver(),
+                    Settings.System.HAPTIC_FEEDBACK_ENABLED,
+                    1
+            ) == 1;
+        } catch (Throwable ignored) {
+            return true;
+        }
+    }
+
+    private Vibrator getRefinedVibrator() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null;
+        try {
+            VibratorManager manager = getSystemService(VibratorManager.class);
+            if (manager == null) return null;
+            Vibrator vibrator = manager.getDefaultVibrator();
+            if (vibrator == null || !vibrator.hasVibrator()) return null;
+            // No amplitude control usually means a coarse ERM-style motor. Stay silent rather than buzz.
+            if (!vibrator.hasAmplitudeControl()) return null;
+            return vibrator;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private boolean canUseRefinedHaptics() {
+        return isSystemHapticsEnabled() && getRefinedVibrator() != null;
     }
 
     private void emitHaptic(String cue) {
-        try {
-            Vibrator vibrator;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                VibratorManager manager = getSystemService(VibratorManager.class);
-                if (manager == null) return;
-                vibrator = manager.getDefaultVibrator();
-            } else {
-                vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-            }
-            if (vibrator == null || !vibrator.hasVibrator()) return;
+        if (!isSystemHapticsEnabled()) return;
 
-            VibrationEffect effect;
-            if ("wake".equals(cue)) {
-                effect = VibrationEffect.createOneShot(24, 105);
-            } else if ("lock".equals(cue)) {
-                effect = VibrationEffect.createOneShot(32, 135);
-            } else if ("online".equals(cue)) {
-                long[] timings = new long[]{0, 28, 34, 38};
-                int[] amplitudes = new int[]{0, 125, 0, 155};
-                effect = VibrationEffect.createWaveform(timings, amplitudes, -1);
+        Vibrator vibrator = getRefinedVibrator();
+        if (vibrator == null) return;
+
+        try {
+            final int effectId;
+            if ("tick".equals(cue)) {
+                effectId = VibrationEffect.EFFECT_TICK;
+            } else if ("click".equals(cue) || "test".equals(cue)) {
+                effectId = VibrationEffect.EFFECT_CLICK;
             } else {
-                effect = VibrationEffect.createOneShot(22, 120);
+                return;
             }
-            vibrator.vibrate(effect);
+
+            // Android 12+ refined predefined haptics. No long one-shot or waveform fallback.
+            vibrator.vibrate(VibrationEffect.createPredefined(effectId));
         } catch (Throwable ignored) {
+            // Unsupported device/effect: intentionally degrade to animation + audio only.
         }
     }
 
