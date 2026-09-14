@@ -59,6 +59,30 @@ jobs:
           keytool -list -keystore "$RUNNER_TEMP/gsb-dev.keystore" -storepass "$GSB_DEV_STORE_PASSWORD" -alias "$GSB_DEV_KEY_ALIAS" >/dev/null
           echo "GSB_DEV_KEYSTORE=$RUNNER_TEMP/gsb-dev.keystore" >> "$GITHUB_ENV"
 
+      - name: Fetch and verify CC0 menu music
+        shell: bash
+        run: |
+          set -euo pipefail
+          MUSIC_URL='https://opengameart.org/sites/default/files/spacelifeNo14.ogg'
+          MUSIC_SHA256='64ba0b12ee09c106bca11531010534df282f3474a88fb1923d55b3de469898d4'
+          MUSIC_OUT='app/src/main/assets/menu_bgm.ogg'
+          mkdir -p app/src/main/assets
+          curl -fL --retry 4 --retry-delay 2 --retry-all-errors "$MUSIC_URL" -o "$MUSIC_OUT"
+          echo "$MUSIC_SHA256  $MUSIC_OUT" | sha256sum -c -
+          test "$(stat -c '%s' "$MUSIC_OUT")" = '634526'
+          cat > app/src/main/assets/menu_bgm_license.txt <<EOF
+          Game Star Box music provenance record
+          Title: Spacelife #14
+          Author/uploader: yd
+          Source: https://opengameart.org/content/spacelife-14
+          Original: $MUSIC_URL
+          License shown by source: CC0
+          CC0 deed: https://creativecommons.org/publicdomain/zero/1.0/
+          SHA-256: $MUSIC_SHA256
+          Size: 634526 bytes
+          Full evidence: docs/licenses/music/SPACELIFE_14_CC0_EVIDENCE.md
+          EOF
+
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
 
@@ -104,7 +128,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.5：接入固定签名 OTA；GitHub 为唯一正式源；多镜像测速、断点续传、SHA-256/包名/versionCode/签名四重校验。"
+              "changelog": "0.4.6：主界面加入低音量 CC0 环境音乐 Spacelife #14；启动动画结束后淡入；系统页可关闭；来源、CC0 许可、固定 SHA-256 与构建校验已归档。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -151,13 +175,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。" \
+              -f body="固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。" \
+              --notes "固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
