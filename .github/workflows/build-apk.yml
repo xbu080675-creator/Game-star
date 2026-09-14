@@ -125,15 +125,18 @@ jobs:
           MANIFEST='app/src/main/AndroidManifest.xml'
           BASE='app/src/main/res/values/styles.xml'
           V31='app/src/main/res/values-v31/styles.xml'
-          CORE_ICON='app/src/main/res/drawable/gsb_boot_core.xml'
-          PREVIEW='app/src/main/res/drawable/gsb_boot_preview.xml'
-          test -f "$MANIFEST" -a -f "$BASE" -a -f "$V31" -a -f "$CORE_ICON" -a -f "$PREVIEW"
+          TRANSPARENT='app/src/main/res/drawable/gsb_boot_transparent.xml'
+          test -f "$MANIFEST" -a -f "$BASE" -a -f "$V31" -a -f "$TRANSPARENT"
           grep -q 'android:theme="@style/Theme.EsportsCenter.Starting"' "$MANIFEST"
           grep -q 'name="Theme.EsportsCenter.Starting"' "$BASE"
-          grep -q '@drawable/gsb_boot_preview' "$BASE"
+          grep -q 'android:windowBackground">#000000' "$BASE"
           grep -q 'android:windowSplashScreenBackground">#000000' "$V31"
-          grep -q 'android:windowSplashScreenAnimatedIcon">@drawable/gsb_boot_core' "$V31"
-          grep -q '@drawable/gsb_boot_core' "$PREVIEW"
+          grep -q 'android:windowSplashScreenAnimatedIcon">@drawable/gsb_boot_transparent' "$V31"
+          grep -q 'android:windowSplashScreenAnimationDuration">0' "$V31"
+          if grep -q '@drawable/gsb_boot_preview' "$BASE"; then
+            echo 'Independent platform boot artwork must not own startup visuals' >&2
+            exit 1
+          fi
 
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
@@ -180,7 +183,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.13：统一启动视觉。Android 系统 Splash/Starting Window 改为纯黑 + Game Star Box 核心标记，消除启动时一闪而过的白色 Android/default 页面，并与现有 GAME STAR BOX WebView 动画直接衔接。本版不改变已验收的 4.02 秒音画时间轴，不新增权限或特权能力。"
+              "changelog": "0.4.14：修正 0.4.13 启动视觉。Android System Splash/Starting Window 不再绘制独立圆环/核心/loading 标志，而只保留与正式 WebView 动画第 0 帧一致的纯黑场；Android 12+ 使用透明 Splash 图标并将系统动画时长设为 0。原 GAME STAR BOX 动画、音效、触觉和后端权限边界不变。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -226,13 +229,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.13 将 Android System Splash/Starting Window 与 Game Star Box 启动动画统一为同一套黑场核心视觉，消除默认白页/Android 图标闪现；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.14 修正 0.4.13 的独立 System Splash 图形：平台层只保留纯黑第 0 帧，所有可见品牌运动继续由原 GAME STAR BOX 动画负责；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.13 将 Android System Splash/Starting Window 与 Game Star Box 启动动画统一为同一套黑场核心视觉，消除默认白页/Android 图标闪现；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.14 修正 0.4.13 的独立 System Splash 图形：平台层只保留纯黑第 0 帧，所有可见品牌运动继续由原 GAME STAR BOX 动画负责；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
