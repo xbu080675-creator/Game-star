@@ -44,6 +44,7 @@
     try { if (window.GSBRuntime) GSBRuntime.ready(); } catch (_) {}
 
     const start = () => {
+      injectScriptOnce('gsb-gesture-runtime-js', 'gesture-runtime.js');
       injectScriptOnce('gsb-game-library-js', 'game-library.js');
       injectScriptOnce('gsb-session-runtime-js', 'session-runtime.js');
       injectScriptOnce('gsb-quick-menu-runtime-js', 'quick-menu-runtime.js');
