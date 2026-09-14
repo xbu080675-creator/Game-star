@@ -4,6 +4,8 @@ import android.app.Application;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.xbu.esportscenter.core.boot.BootOrchestrator;
+import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.capability.CapabilityAvailability;
 import com.xbu.esportscenter.core.capability.CapabilityRegistry;
 import com.xbu.esportscenter.core.entry.GameEntryCoordinator;
@@ -16,8 +18,10 @@ import com.xbu.esportscenter.platform.redmagic.RedMagicSnapshot;
 public final class GameStarBoxApplication extends Application {
     private static final String TAG_CORE = "[GSB-CORE]";
     private static final String TAG_ENTRY = "[GSB-ENTRY]";
+    private static final String TAG_BOOT = "[GSB-BOOT]";
     private static final String CAPABILITY_REDMAGIC_ENTRY_EDGE = "platform.redmagic.entry.edge";
 
+    private final BootOrchestrator boot = new BootOrchestrator();
     private final CapabilityRegistry capabilities = new CapabilityRegistry();
     private final GameSessionManager gameSessions = new GameSessionManager();
     private final GameEntryCoordinator gameEntry = new GameEntryCoordinator();
@@ -30,13 +34,24 @@ public final class GameStarBoxApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        boot.addListener(snapshot -> Log.i(
+                TAG_BOOT,
+                "phase=" + snapshot.phase
+                        + " progress=" + snapshot.overallProgress
+                        + " blockingReady=" + snapshot.blockingReady
+        ));
+        boot.complete(BootPhase.CORE_INIT);
+
         gameSessions.addListener((previous, current, gameId) ->
                 Log.i(TAG_CORE, "session " + previous + " -> " + current + " game=" + gameId));
+        boot.complete(BootPhase.SESSION_RUNTIME_READY);
 
         gameEntry.addListener(request -> Log.i(
                 TAG_ENTRY,
                 "GSB-ENTRY-REQUEST seq=" + request.sequence + " source=" + request.source
         ));
+
+        boot.complete(BootPhase.CAPABILITY_REGISTRY_READY);
 
         redMagicEntryMonitor = new RedMagicEntryMonitor(this, this::onRedMagicSnapshot);
         try {
@@ -52,12 +67,15 @@ public final class GameStarBoxApplication extends Application {
                     CapabilityAvailability.UNAVAILABLE,
                     "GSB-RM-ENTRY-EDGE-MONITOR-UNAVAILABLE"
             ));
+            boot.complete(BootPhase.REDMAGIC_PROBE);
             Log.w(TAG_CORE, "GSB-RM-ENTRY-MONITOR-START-FAILED", e);
         }
     }
 
     private synchronized void onRedMagicSnapshot(RedMagicSnapshot snapshot) {
         lastRedMagicSnapshot = snapshot;
+        boot.complete(BootPhase.REDMAGIC_PROBE);
+
         CapabilityAvailability availability;
         String detail;
 
@@ -119,6 +137,10 @@ public final class GameStarBoxApplication extends Application {
                     SystemClock.elapsedRealtime()
             );
         }
+    }
+
+    public BootOrchestrator getBootOrchestrator() {
+        return boot;
     }
 
     public CapabilityRegistry getCapabilities() {
