@@ -4,7 +4,11 @@
 
 从 `0.4.5` 起，所有 preview APK 必须使用同一套固定 DEV 签名，以保证后续测试版本可以原位覆盖升级。
 
-DEV 私钥不提交到仓库，由 GitHub Actions Secrets 注入。CI 每次构建后使用 `apksigner` 计算实际证书 SHA-256，并与受保护 Secret 中的固定指纹比对；不一致则发布失败。
+当前固定 DEV 证书 SHA-256：
+
+`d9bc5f96ed5fa9a4e11f3888c8c3c261333f4301ec9a266c614fb5a2ad180ecd`
+
+该指纹是公开校验信息，不是私钥。DEV 私钥本体不提交到仓库，由 GitHub Actions Secrets 注入。CI 每次构建后使用 `apksigner` 计算实际证书 SHA-256，并与受保护 Secret 中的固定指纹比对；不一致则发布失败。
 
 需要配置的 Repository Actions Secrets：
 
