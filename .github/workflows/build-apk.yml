@@ -123,11 +123,21 @@ jobs:
         run: |
           set -euo pipefail
           BOOT='app/src/main/java/com/xbu/esportscenter/core/boot'
+          BRIDGE='app/src/main/java/com/xbu/esportscenter/BootMainActivity.java'
+          BOOT_JS='app/src/main/assets/native-update.js'
           test -f "$BOOT/BootPhase.java" -a -f "$BOOT/BootSnapshot.java" -a -f "$BOOT/BootOrchestrator.java"
+          test -f "$BRIDGE" -a -f "$BOOT_JS"
           grep -q 'WEBVIEW_READY' "$BOOT/BootPhase.java"
           grep -q 'BOOT_COMPLETE' "$BOOT/BootPhase.java"
+          grep -q 'GSBBoot' "$BRIDGE"
+          grep -q 'webViewReady' "$BRIDGE"
+          grep -q 'playbackRateFor' "$BOOT_JS"
           if grep -R -Eqi 'android\.|rikka\.shizuku|Settings\.|ProcessBuilder|Runtime\.getRuntime|/system/bin|/sys/' "$BOOT"; then
             echo 'Boot Orchestrator must remain platform-neutral' >&2
+            exit 1
+          fi
+          if grep -Eqi 'rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime|Settings\.(Global|Secure|System)\.put' "$BRIDGE"; then
+            echo 'Boot bridge must not expose privileged execution' >&2
             exit 1
           fi
 
@@ -141,6 +151,8 @@ jobs:
           TRANSPARENT='app/src/main/res/drawable/gsb_boot_transparent.xml'
           test -f "$MANIFEST" -a -f "$BASE" -a -f "$V31" -a -f "$TRANSPARENT"
           grep -q 'android:theme="@style/Theme.EsportsCenter.Starting"' "$MANIFEST"
+          grep -q 'android:name=".MainActivity"' "$MANIFEST"
+          grep -q 'android:targetActivity=".BootMainActivity"' "$MANIFEST"
           grep -q 'name="Theme.EsportsCenter.Starting"' "$BASE"
           grep -q 'android:windowBackground">#000000' "$BASE"
           grep -q 'android:windowSplashScreenBackground">#000000' "$V31"
@@ -196,7 +208,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.15：Boot Orchestrator Phase 1。新增平台无关启动状态机，真实记录 Core、Capability Registry、REDMAGIC Probe 与 Session Runtime 的启动完成度，并保留 WEBVIEW_READY/BOOT_COMPLETE 接口供下一步与现有 GAME STAR BOX 动画联动。本版冻结 0.4.14 已验收启动视觉，不新增权限或特权能力。"
+              "changelog": "0.4.16：Boot Runtime 联动。保留 0.4.14 已验收视觉不变，通过受限 GSBBoot 只读桥把真实 BootOrchestrator 状态送入 WebView；启动音频与现有动画仍使用同一主时钟，但 playbackRate 会随 Core/Capability/REDMAGIC/Session/WebView 实际完成度在 0.72x~1.42x 间动态调整。保留 .MainActivity 组件兼容 OTA 自动重启，不新增权限或特权能力。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -242,13 +254,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.15 建立平台无关 Boot Orchestrator，开始用真实 Core/Capability/REDMAGIC/Session 启动状态作为未来动画节奏输入；0.4.14 已验收启动视觉保持冻结，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.16 将平台无关 BootOrchestrator 正式接入 WebView 启动时钟，动画/启动音频会按真实后端完成度动态变速；0.4.14 已验收视觉保持冻结，.MainActivity 组件继续兼容 OTA 自动重启，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.15 建立平台无关 Boot Orchestrator，开始用真实 Core/Capability/REDMAGIC/Session 启动状态作为未来动画节奏输入；0.4.14 已验收启动视觉保持冻结，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.16 将平台无关 BootOrchestrator 正式接入 WebView 启动时钟，动画/启动音频会按真实后端完成度动态变速；0.4.14 已验收视觉保持冻结，.MainActivity 组件继续兼容 OTA 自动重启，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
