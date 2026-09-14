@@ -6,21 +6,40 @@ android {
     namespace 'com.xbu.esportscenter'
     compileSdk 35
 
+    def fixedStore = System.getenv('GSB_DEV_KEYSTORE')
+
     defaultConfig {
         applicationId "com.xbu.esportscenter"
         minSdk 26
         targetSdk 35
-        versionCode 17
-        versionName "0.4.4"
+        versionCode 18
+        versionName "0.4.5"
+    }
+
+    signingConfigs {
+        if (fixedStore != null && !fixedStore.isBlank()) {
+            gsbDev {
+                storeFile file(fixedStore)
+                storePassword System.getenv('GSB_DEV_STORE_PASSWORD')
+                keyAlias System.getenv('GSB_DEV_KEY_ALIAS')
+                keyPassword System.getenv('GSB_DEV_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
         debug {
             minifyEnabled false
+            if (signingConfigs.findByName('gsbDev') != null) {
+                signingConfig signingConfigs.gsbDev
+            }
         }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingConfigs.findByName('gsbDev') != null) {
+                signingConfig signingConfigs.gsbDev
+            }
         }
     }
 
@@ -28,4 +47,8 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
 }

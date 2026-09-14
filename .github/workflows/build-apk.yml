@@ -12,6 +12,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      GSB_DEV_STORE_PASSWORD: game-star-box-dev
+      GSB_DEV_KEY_PASSWORD: game-star-box-dev
+      GSB_DEV_KEY_ALIAS: gsb-dev
+      GSB_EXPECTED_CERT_SHA256: 1d1c44e7bfabeb5c4bab863408f07aef1fa806c4337827830f4b72fb2920bf35
 
     steps:
       - name: Checkout
@@ -36,27 +41,80 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Restore fixed preview signing identity
+        run: |
+          base64 -d signing/gsb-dev.jks.b64 > "$RUNNER_TEMP/gsb-dev.jks"
+          echo "GSB_DEV_KEYSTORE=$RUNNER_TEMP/gsb-dev.jks" >> "$GITHUB_ENV"
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Game-star-debug.apk
+      - name: Build fixed-signed preview APK
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Read version metadata
+        run: |
+          VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle | head -1)"
+          VERSION_CODE="$(sed -n 's/.*versionCode \([0-9][0-9]*\).*/\1/p' app/build.gradle | head -1)"
+          test -n "$VERSION_NAME"
+          test -n "$VERSION_CODE"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "APK_NAME=Game-Star-Box-$VERSION_NAME.apk" >> "$GITHUB_ENV"
+
+      - name: Verify fixed signing certificate
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          CERT="$($ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1 | tr 'A-F' 'a-f' | tr -d ':[:space:]')"
+          echo "cert=$CERT"
+          test "$CERT" = "$GSB_EXPECTED_CERT_SHA256"
+
+      - name: Prepare OTA assets
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "$APK_NAME"
+          SHA256="$(sha256sum "$APK_NAME" | awk '{print $1}')"
+          SIZE="$(stat -c '%s' "$APK_NAME")"
+          PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          export SHA256 SIZE PUBLISHED_AT
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "schemaVersion": 1,
+              "channel": "preview",
+              "versionName": os.environ["VERSION_NAME"],
+              "versionCode": int(os.environ["VERSION_CODE"]),
+              "apk": os.environ["APK_NAME"],
+              "sha256": os.environ["SHA256"],
+              "size": int(os.environ["SIZE"]),
+              "publishedAt": os.environ["PUBLISHED_AT"],
+              "changelog": "0.4.5：接入 Game Star Box 固定签名 OTA；GitHub 为唯一正式源；多镜像测速、断点续传、SHA-256/包名/versionCode/签名四重校验。"
+          }
+          with open("latest.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PY
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Game-star-debug-apk
-          path: Game-star-debug.apk
+          name: Game-star-box-preview-apk
+          path: |
+            ${{ env.APK_NAME }}
+            latest.json
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish rolling preview release
+      - name: Publish rolling preview release safely
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete preview --cleanup-tag -y || true
-          gh release create preview Game-star-debug.apk \
-            --target "$GITHUB_SHA" \
-            --title "Game-star Preview" \
-            --notes "自动构建的可安装测试 APK。当前为横屏沉浸式电竞中心 UI 原型。" \
+          if ! gh release view preview >/dev/null 2>&1; then
+            gh release create preview --target "$GITHUB_SHA" --title "Game Star Box Preview" --notes "Game Star Box 可安装预览版。" --prerelease
+          else
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true >/dev/null
+          fi
+
+          # Order is intentional: APK first, manifest last.
+          gh release upload preview "$APK_NAME" --clobber
+          gh release upload preview latest.json --clobber
+          gh release edit preview \
+            --title "Game Star Box $VERSION_NAME Preview" \
+            --notes "固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内可自动检测并通过多镜像加速下载。" \
             --prerelease
