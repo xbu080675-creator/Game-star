@@ -12,12 +12,13 @@ android {
         applicationId "com.xbu.esportscenter"
         minSdk 26
         targetSdk 35
-        versionCode 20
-        versionName "0.4.7"
+        versionCode 21
+        versionName "0.4.8"
     }
 
     buildFeatures {
         buildConfig true
+        aidl true
     }
 
     signingConfigs {
@@ -55,4 +56,8 @@ android {
 
 dependencies {
     implementation 'androidx.core:core:1.15.0'
+
+    def shizukuVersion = '13.1.5'
+    implementation "dev.rikka.shizuku:api:$shizukuVersion"
+    implementation "dev.rikka.shizuku:provider:$shizukuVersion"
 }
