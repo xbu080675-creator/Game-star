@@ -19,15 +19,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import rikka.shizuku.Shizuku;
 
 /**
- * Narrow application-side adapter for read-only REDMAGIC shoulder SAR input.
+ * Narrow application-side adapter for REDMAGIC shoulder calibration.
  *
- * No command, device path or key code enters from WebView/UI. The privileged service discovers
- * and validates Nubia SAR nodes itself and returns only LEFT/RIGHT DOWN/UP semantics.
+ * No command, Settings key/value, device path or key code enters from WebView/UI. The privileged
+ * service owns the fixed calibration scene activation and returns only LEFT/RIGHT DOWN/UP input.
  */
 public final class RedMagicShoulderPrivilegedAdapter {
     private static final String TAG = "[GSB-SHOULDER]";
     private static final int REQUEST_CODE = 0x4754;
     private static final long CALIBRATION_POLL_MS = 300L;
+    private static final long BINDER_RETRY_MS = 350L;
+    private static final int MAX_BINDER_RETRIES = 12;
     private static final String PREFS_BOOT = "gsb.boot.profile";
     private static final String PREF_SHOULDER_CALIBRATED = "shoulder_calibrated_v1";
 
@@ -41,6 +43,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
     private volatile boolean active;
     private volatile boolean destroyed;
     private volatile boolean permissionRequestInFlight;
+    private int binderRetryCount;
 
     private final IRedMagicShoulderCallback callback = new IRedMagicShoulderCallback.Stub() {
         @Override
@@ -68,7 +71,16 @@ public final class RedMagicShoulderPrivilegedAdapter {
         }
     };
 
+    private final Runnable binderRetry = new Runnable() {
+        @Override
+        public void run() {
+            if (!active || destroyed || remote != null || bindRequested.get()) return;
+            continueStart();
+        }
+    };
+
     private final Shizuku.OnBinderReceivedListener binderReceivedListener = () -> {
+        binderRetryCount = 0;
         if (active && !destroyed) continueStart();
     };
 
@@ -77,6 +89,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
         bindRequested.set(false);
         serviceBound.set(false);
         Log.w(TAG, "GSB-SHOULDER-BINDER-DEAD");
+        if (active && !destroyed) scheduleBinderRetry();
     };
 
     private final Shizuku.OnRequestPermissionResultListener permissionResultListener =
@@ -85,7 +98,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 permissionRequestInFlight = false;
                 if (!active || destroyed) return;
                 if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                    Log.i(TAG, "Shizuku shoulder-read permission granted");
+                    Log.i(TAG, "Shizuku shoulder calibration permission granted");
                     continueStart();
                 } else {
                     Log.w(TAG, "GSB-SHOULDER-SHIZUKU-DENIED");
@@ -103,6 +116,15 @@ public final class RedMagicShoulderPrivilegedAdapter {
             }
             remote = IRedMagicShoulderReader.Stub.asInterface(binder);
             try {
+                int sceneResult = remote.enableCalibrationScene();
+                if (sceneResult != 0) {
+                    Log.w(TAG, "GSB-SHOULDER-SCENE-ACTIVATE-FAILED result=" + sceneResult);
+                    stopAndRestoreRemote();
+                    unbindService(true);
+                    return;
+                }
+                Log.i(TAG, "temporary REDMAGIC shoulder scene active");
+
                 String devices = remote.detectDevices();
                 if (devices == null || devices.trim().isEmpty()) {
                     Log.w(TAG, "GSB-SHOULDER-SAR-NOT-FOUND");
@@ -112,6 +134,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 remote.startReading(callback);
             } catch (Throwable t) {
                 Log.w(TAG, "GSB-SHOULDER-READER-START-FAILED", t);
+                stopAndRestoreRemote();
                 unbindService(true);
             }
         }
@@ -121,7 +144,10 @@ public final class RedMagicShoulderPrivilegedAdapter {
             remote = null;
             bindRequested.set(false);
             serviceBound.set(false);
-            if (active && !destroyed) Log.w(TAG, "GSB-SHOULDER-BINDER-DISCONNECTED");
+            if (active && !destroyed) {
+                Log.w(TAG, "GSB-SHOULDER-BINDER-DISCONNECTED");
+                scheduleBinderRetry();
+            }
         }
     };
 
@@ -130,7 +156,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
         public void run() {
             if (!active || destroyed) return;
             if (isCalibrated()) {
-                Log.i(TAG, "calibration complete; stopping privileged shoulder reader");
+                Log.i(TAG, "calibration complete; restoring REDMAGIC scene and stopping reader");
                 deactivate();
                 return;
             }
@@ -157,7 +183,9 @@ public final class RedMagicShoulderPrivilegedAdapter {
         if (destroyed || isCalibrated()) return;
         if (active) return;
         active = true;
+        binderRetryCount = 0;
         main.removeCallbacks(calibrationWatch);
+        main.removeCallbacks(binderRetry);
         main.post(calibrationWatch);
         continueStart();
     }
@@ -166,14 +194,10 @@ public final class RedMagicShoulderPrivilegedAdapter {
         if (!active && remote == null && !bindRequested.get() && !serviceBound.get()) return;
         active = false;
         permissionRequestInFlight = false;
+        binderRetryCount = 0;
         main.removeCallbacks(calibrationWatch);
-        IRedMagicShoulderReader reader = remote;
-        if (reader != null) {
-            try {
-                reader.stopReading();
-            } catch (Throwable ignored) {
-            }
-        }
+        main.removeCallbacks(binderRetry);
+        stopAndRestoreRemote();
         unbindService(true);
     }
 
@@ -181,9 +205,18 @@ public final class RedMagicShoulderPrivilegedAdapter {
         if (!active || destroyed || isCalibrated()) return;
         try {
             if (!Shizuku.pingBinder()) {
-                Log.i(TAG, "GSB-SHOULDER-SHIZUKU-UNAVAILABLE");
+                if (binderRetryCount < MAX_BINDER_RETRIES) {
+                    binderRetryCount++;
+                    Log.i(TAG, "waiting for Shizuku Binder attempt=" + binderRetryCount);
+                    scheduleBinderRetry();
+                } else {
+                    Log.w(TAG, "GSB-SHOULDER-SHIZUKU-UNAVAILABLE");
+                }
                 return;
             }
+            binderRetryCount = 0;
+            main.removeCallbacks(binderRetry);
+
             if (Shizuku.isPreV11()) {
                 Log.w(TAG, "GSB-SHOULDER-SHIZUKU-UNSUPPORTED");
                 return;
@@ -196,13 +229,14 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 }
                 if (!permissionRequestInFlight) {
                     permissionRequestInFlight = true;
-                    Log.i(TAG, "requesting Shizuku permission for shoulder calibration reader");
+                    Log.i(TAG, "requesting Shizuku permission for REDMAGIC shoulder calibration");
                     Shizuku.requestPermission(REQUEST_CODE);
                 }
                 return;
             }
+            Log.i(TAG, "Shizuku permission already granted; no prompt required");
             if (bindRequested.get() || serviceBound.get() || remote != null) return;
-            Log.i(TAG, "binding read-only REDMAGIC shoulder UserService");
+            Log.i(TAG, "binding REDMAGIC shoulder calibration UserService");
             bindRequested.set(true);
             try {
                 Shizuku.bindUserService(serviceArgs, serviceConnection);
@@ -212,6 +246,30 @@ public final class RedMagicShoulderPrivilegedAdapter {
             }
         } catch (Throwable t) {
             Log.w(TAG, "GSB-SHOULDER-SHIZUKU-CONNECT-FAILED", t);
+        }
+    }
+
+    private void scheduleBinderRetry() {
+        if (!active || destroyed) return;
+        main.removeCallbacks(binderRetry);
+        main.postDelayed(binderRetry, BINDER_RETRY_MS);
+    }
+
+    private void stopAndRestoreRemote() {
+        IRedMagicShoulderReader reader = remote;
+        if (reader == null) return;
+        try {
+            reader.stopReading();
+        } catch (Throwable t) {
+            Log.w(TAG, "shoulder reader stop failed", t);
+        }
+        try {
+            int result = reader.restoreCalibrationScene();
+            if (result != 0) {
+                Log.w(TAG, "GSB-SHOULDER-SCENE-RESTORE-FAILED result=" + result);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "GSB-SHOULDER-SCENE-RESTORE-FAILED", t);
         }
     }
 
@@ -229,7 +287,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 Shizuku.unbindUserService(serviceArgs, serviceConnection, remove);
             }
         } catch (Throwable t) {
-            Log.w(TAG, "shoulder reader unbind skipped", t);
+            Log.w(TAG, "shoulder calibration UserService unbind skipped", t);
         } finally {
             remote = null;
         }
