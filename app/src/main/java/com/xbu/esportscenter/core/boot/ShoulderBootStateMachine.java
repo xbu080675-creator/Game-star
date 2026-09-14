@@ -1,8 +1,11 @@
 package com.xbu.esportscenter.core.boot;
 
 /**
- * Platform-neutral first-boot shoulder calibration and ignition state machine.
- * Core owns only semantic input/hold timing. Android/REDMAGIC adapters translate hardware input.
+ * Platform-neutral first-boot hardware-awakening state machine.
+ *
+ * Core owns only semantic shoulder input and hold timing. Android/REDMAGIC adapters translate
+ * physical input. Finishing the L+R ritual only ARMS the device; platform code must explicitly
+ * release ignition after first-boot provisioning is ready.
  */
 public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink {
     public enum Side { LEFT, RIGHT }
@@ -13,6 +16,7 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
         RIGHT_TAP,
         RIGHT_HOLD,
         BOTH_HOLD,
+        ARMED,
         IGNITING,
         COMPLETE
     }
@@ -75,7 +79,11 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
     }
 
     public synchronized Snapshot onInput(Side side, boolean down, long nowMs) {
-        if (phase == Phase.COMPLETE) return snapshotLocked();
+        if (phase == Phase.COMPLETE || phase == Phase.IGNITING || phase == Phase.ARMED) {
+            if (side == Side.LEFT) leftDown = down;
+            else rightDown = down;
+            return snapshotLocked();
+        }
 
         if (side == Side.LEFT) {
             if (leftDown == down) return snapshotLocked();
@@ -132,8 +140,7 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                     resetProgressLocked();
                 }
                 break;
-            case IGNITING:
-            case COMPLETE:
+            default:
                 break;
         }
         return snapshotLocked();
@@ -152,9 +159,11 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                     if (bothDownAt == 0L) bothDownAt = nowMs;
                     updateProgressLocked(nowMs - bothDownAt, IGNITION_HOLD_MS);
                     if (progress >= 100) {
-                        phase = Phase.IGNITING;
+                        phase = Phase.ARMED;
                         progress = 100;
                         level = 4;
+                        leftCalibrated = true;
+                        rightCalibrated = true;
                     }
                 } else {
                     resetProgressLocked();
@@ -169,6 +178,7 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
 
     /**
      * Lifecycle-safe cancel: dropping the Activity must never count as a successful release.
+     * ARMED is latched because the user already completed the physical ritual.
      */
     public synchronized Snapshot cancelActivePresses() {
         leftDown = false;
@@ -176,18 +186,30 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
         leftDownAt = 0L;
         rightDownAt = 0L;
         bothDownAt = 0L;
-        resetProgressLocked();
+        if (phase != Phase.ARMED && phase != Phase.IGNITING && phase != Phase.COMPLETE) {
+            resetProgressLocked();
+        }
         return snapshotLocked();
     }
 
-    public synchronized Snapshot startFastIgnition() {
+    /** Subsequent boots skip calibration but still wait at ARMED for the runtime ignition gate. */
+    public synchronized Snapshot startFastArmed() {
         leftCalibrated = true;
         rightCalibrated = true;
         leftDown = false;
         rightDown = false;
         progress = 100;
         level = 4;
+        phase = Phase.ARMED;
+        return snapshotLocked();
+    }
+
+    /** Only the platform-neutral IgnitionGate owner may release ARMED -> IGNITING. */
+    public synchronized Snapshot releaseIgnition() {
+        if (phase != Phase.ARMED) return snapshotLocked();
         phase = Phase.IGNITING;
+        progress = 100;
+        level = 4;
         return snapshotLocked();
     }
 
