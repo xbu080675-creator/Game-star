@@ -1,6 +1,5 @@
 package com.xbu.esportscenter;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +10,9 @@ import com.xbu.esportscenter.core.boot.BootOrchestrator;
 import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.boot.BootSnapshot;
 import com.xbu.esportscenter.core.capability.CapabilityRegistry;
+import com.xbu.esportscenter.core.session.GameSessionManager;
+import com.xbu.esportscenter.core.session.GameSessionState;
+import com.xbu.esportscenter.platform.android.AndroidGameSessionLauncher;
 import com.xbu.esportscenter.platform.android.InstalledGameCatalog;
 
 import org.json.JSONArray;
@@ -25,10 +27,14 @@ import java.util.Map;
 public final class BootMainActivity extends MainActivity {
     private BootOrchestrator boot;
     private CapabilityRegistry capabilities;
+    private GameSessionManager sessions;
     private InstalledGameCatalog gameCatalog;
+    private AndroidGameSessionLauncher gameLauncher;
     private WebView bootWebView;
     private final BootOrchestrator.Listener bootListener = this::dispatchBootSnapshot;
     private final CapabilityRegistry.Listener capabilityListener = this::dispatchCapabilitySnapshot;
+    private final GameSessionManager.Listener sessionListener = (previous, current, gameId) ->
+            dispatchSessionSnapshot(current, gameId);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,16 +43,32 @@ public final class BootMainActivity extends MainActivity {
         GameStarBoxApplication app = (GameStarBoxApplication) getApplication();
         boot = app.getBootOrchestrator();
         capabilities = app.getCapabilities();
+        sessions = app.getGameSessions();
         gameCatalog = new InstalledGameCatalog(this);
+        gameLauncher = new AndroidGameSessionLauncher(this, gameCatalog, sessions);
         boot.addListener(bootListener);
         capabilities.addListener(capabilityListener);
+        sessions.addListener(sessionListener);
 
         bootWebView = findWebView(getWindow().getDecorView());
         if (bootWebView != null) {
             bootWebView.addJavascriptInterface(new BootBridge(), "GSBBoot");
             bootWebView.addJavascriptInterface(new CapabilityBridge(), "GSBCapabilities");
             bootWebView.addJavascriptInterface(new GameBridge(), "GSBGames");
+            bootWebView.addJavascriptInterface(new SessionBridge(), "GSBSession");
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (gameLauncher != null) gameLauncher.onHostResumed();
+    }
+
+    @Override
+    protected void onStop() {
+        if (gameLauncher != null) gameLauncher.onHostStopped();
+        super.onStop();
     }
 
     private WebView findWebView(View view) {
@@ -87,16 +109,16 @@ public final class BootMainActivity extends MainActivity {
 
         @JavascriptInterface
         public boolean launch(String packageName) {
-            if (gameCatalog == null) return false;
-            Intent launch = gameCatalog.createValidatedLaunchIntent(packageName);
-            if (launch == null) return false;
-            runOnUiThread(() -> {
-                try {
-                    startActivity(launch);
-                } catch (RuntimeException ignored) {
-                }
-            });
-            return true;
+            return gameLauncher != null && gameLauncher.requestLaunch(packageName);
+        }
+    }
+
+    private final class SessionBridge {
+        @JavascriptInterface
+        public String state() {
+            GameSessionManager manager = sessions;
+            if (manager == null) return "{}";
+            return toJson(manager.getState(), manager.getGameId());
         }
     }
 
@@ -122,6 +144,19 @@ public final class BootMainActivity extends MainActivity {
             if (bootWebView != null) {
                 bootWebView.evaluateJavascript(
                         "window.onGSBCapabilityState&&window.onGSBCapabilityState(" + json + ");",
+                        null
+                );
+            }
+        });
+    }
+
+    private void dispatchSessionSnapshot(GameSessionState state, String gameId) {
+        if (bootWebView == null) return;
+        String json = toJson(state, gameId);
+        runOnUiThread(() -> {
+            if (bootWebView != null) {
+                bootWebView.evaluateJavascript(
+                        "window.onGSBSessionState&&window.onGSBSessionState(" + json + ");",
                         null
                 );
             }
@@ -157,6 +192,16 @@ public final class BootMainActivity extends MainActivity {
         return root.toString();
     }
 
+    private static String toJson(GameSessionState state, String gameId) {
+        JSONObject root = new JSONObject();
+        try {
+            root.put("state", state == null ? GameSessionState.IDLE.name() : state.name());
+            root.put("gameId", gameId == null ? "" : gameId);
+        } catch (Throwable ignored) {
+        }
+        return root.toString();
+    }
+
     @Override
     protected void onDestroy() {
         if (boot != null) {
@@ -167,6 +212,11 @@ public final class BootMainActivity extends MainActivity {
             capabilities.removeListener(capabilityListener);
             capabilities = null;
         }
+        if (sessions != null) {
+            sessions.removeListener(sessionListener);
+            sessions = null;
+        }
+        gameLauncher = null;
         gameCatalog = null;
         bootWebView = null;
         super.onDestroy();
