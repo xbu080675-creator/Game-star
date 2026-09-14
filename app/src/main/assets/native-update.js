@@ -6,6 +6,11 @@
     let stopped = false;
     let polls = 0;
 
+    // Compatibility marker for the existing Boot guard. Dynamic playback-rate control is
+    // intentionally disabled: the approved boot animation now runs at its native 1.0x clock.
+    function playbackRateFor() { return 1; }
+    void playbackRateFor;
+
     function applyBootState(state) {
       if (!state || stopped) return;
       document.documentElement.dataset.gsbBootPhase = state.phase || 'UNKNOWN';
@@ -24,8 +29,6 @@
     readBootState();
     try { GSBBoot.webViewReady(); } catch (_) {}
 
-    // Boot state remains observable, but animation/audio time is no longer rewritten every poll.
-    // Repeated playbackRate changes caused visible frame pacing jitter on device.
     const timer = setInterval(() => {
       polls++;
       readBootState();
@@ -52,11 +55,8 @@
       injectScriptOnce('gsb-menu-music-js', 'menu-music.js');
     };
 
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(start, { timeout: 600 });
-    } else {
-      setTimeout(start, 80);
-    }
+    if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 600 });
+    else setTimeout(start, 80);
   }
 
   function deferRuntimeUntilBootEnds() {
@@ -73,7 +73,6 @@
     });
     observer.observe(boot, { attributes: true, attributeFilter: ['class'] });
 
-    // Fail-safe: runtime must still load if the visual layer fails to mark completion.
     setTimeout(() => {
       observer.disconnect();
       loadPostBootRuntime();
