@@ -30,6 +30,8 @@ import com.xbu.esportscenter.core.session.GameSessionManager;
 import com.xbu.esportscenter.core.session.GameSessionState;
 import com.xbu.esportscenter.platform.android.AndroidGameSessionLauncher;
 import com.xbu.esportscenter.platform.android.AndroidShoulderKeyAdapter;
+import com.xbu.esportscenter.platform.android.HardwarePlaygroundHapticAdapter;
+import com.xbu.esportscenter.platform.android.HardwarePlaygroundMotionAdapter;
 import com.xbu.esportscenter.platform.android.InstalledGameCatalog;
 
 import org.json.JSONArray;
@@ -63,6 +65,8 @@ public final class BootMainActivity extends MainActivity {
     private final Handler bootHandler = new Handler(Looper.getMainLooper());
     private ShoulderBootStateMachine shoulderBoot;
     private AndroidShoulderKeyAdapter shoulderKeyAdapter;
+    private HardwarePlaygroundMotionAdapter playgroundMotion;
+    private HardwarePlaygroundHapticAdapter playgroundHaptics;
     private WebView shoulderBootView;
     private boolean shoulderBootActive;
     private boolean shoulderBootGateOpen;
@@ -113,6 +117,21 @@ public final class BootMainActivity extends MainActivity {
         sessions = app.getGameSessions();
         gameCatalog = new InstalledGameCatalog(this);
         gameLauncher = new AndroidGameSessionLauncher(this, gameCatalog, sessions);
+        playgroundHaptics = new HardwarePlaygroundHapticAdapter(this);
+        playgroundMotion = new HardwarePlaygroundMotionAdapter(
+                this,
+                new HardwarePlaygroundMotionAdapter.Listener() {
+                    @Override
+                    public void onMotion(float pitchDegrees, float rollDegrees) {
+                        dispatchPlaygroundMotion(pitchDegrees, rollDegrees);
+                    }
+
+                    @Override
+                    public void onUnavailable(String code) {
+                        dispatchPlaygroundMotionUnavailable(code);
+                    }
+                }
+        );
 
         provisioning = new FirstBootProvisioningCoordinator();
         ignitionGate = new IgnitionGate();
@@ -173,6 +192,8 @@ public final class BootMainActivity extends MainActivity {
 
     @Override
     protected void onPause() {
+        if (playgroundMotion != null) playgroundMotion.stop();
+        if (playgroundHaptics != null) playgroundHaptics.cancel();
         if (shoulderBootActive) {
             bootHandler.removeCallbacks(shoulderTick);
             cancelBootVibration();
@@ -242,6 +263,7 @@ public final class BootMainActivity extends MainActivity {
         settings.setDisplayZoomControls(false);
 
         shoulderBootView.addJavascriptInterface(new ShoulderBootBridge(), "GSBShoulderBoot");
+        shoulderBootView.addJavascriptInterface(new HardwarePlaygroundBridge(), "GSBPlayground");
         shoulderBootView.setWebViewClient(new WebViewClient());
 
         addContentView(
@@ -369,6 +391,39 @@ public final class BootMainActivity extends MainActivity {
         }
     }
 
+    private final class HardwarePlaygroundBridge {
+        @JavascriptInterface
+        public boolean motionAvailable() {
+            HardwarePlaygroundMotionAdapter adapter = playgroundMotion;
+            return adapter != null && adapter.isAvailable();
+        }
+
+        @JavascriptInterface
+        public void startMotion() {
+            runOnUiThread(() -> {
+                HardwarePlaygroundMotionAdapter adapter = playgroundMotion;
+                if (adapter != null) adapter.start();
+            });
+        }
+
+        @JavascriptInterface
+        public void stopMotion() {
+            runOnUiThread(() -> {
+                HardwarePlaygroundMotionAdapter adapter = playgroundMotion;
+                if (adapter != null) adapter.stop();
+            });
+        }
+
+        @JavascriptInterface
+        public void haptic(int sample) {
+            int safe = Math.max(0, Math.min(2, sample));
+            runOnUiThread(() -> {
+                HardwarePlaygroundHapticAdapter adapter = playgroundHaptics;
+                if (adapter != null) adapter.playSample(safe);
+            });
+        }
+    }
+
     private final class ShoulderBootBridge {
         @JavascriptInterface
         public String mode() {
@@ -493,6 +548,32 @@ public final class BootMainActivity extends MainActivity {
                         null
                 );
             }
+        });
+    }
+
+    private void dispatchPlaygroundMotion(float pitchDegrees, float rollDegrees) {
+        runOnUiThread(() -> {
+            WebView view = shoulderBootView;
+            if (view == null) return;
+            view.evaluateJavascript(
+                    "window.onGSBMotion&&window.onGSBMotion("
+                            + Float.toString(pitchDegrees) + ","
+                            + Float.toString(rollDegrees) + ");",
+                    null
+            );
+        });
+    }
+
+    private void dispatchPlaygroundMotionUnavailable(String code) {
+        String safe = code == null ? "GSB-PLAYGROUND-MOTION-UNAVAILABLE"
+                : code.replaceAll("[^A-Z0-9._-]", "");
+        runOnUiThread(() -> {
+            WebView view = shoulderBootView;
+            if (view == null) return;
+            view.evaluateJavascript(
+                    "window.onGSBMotionUnavailable&&window.onGSBMotionUnavailable('" + safe + "');",
+                    null
+            );
         });
     }
 
@@ -630,6 +711,8 @@ public final class BootMainActivity extends MainActivity {
         shoulderBootActive = false;
         shoulderBootGateOpen = true;
         bootHandler.removeCallbacks(shoulderTick);
+        if (playgroundMotion != null) playgroundMotion.stop();
+        if (playgroundHaptics != null) playgroundHaptics.cancel();
         cancelBootVibration();
         if (shoulderBoot != null) shoulderBoot.complete();
 
@@ -793,6 +876,14 @@ public final class BootMainActivity extends MainActivity {
     protected void onDestroy() {
         bootHandler.removeCallbacksAndMessages(null);
         cancelBootVibration();
+        if (playgroundMotion != null) {
+            playgroundMotion.shutdown();
+            playgroundMotion = null;
+        }
+        if (playgroundHaptics != null) {
+            playgroundHaptics.cancel();
+            playgroundHaptics = null;
+        }
 
         if (shoulderBootView != null) {
             ViewGroup parent = (ViewGroup) shoulderBootView.getParent();
