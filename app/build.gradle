@@ -16,6 +16,10 @@ android {
         versionName "0.4.5"
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     signingConfigs {
         if (fixedStore != null && !fixedStore.isBlank()) {
             gsbDev {
