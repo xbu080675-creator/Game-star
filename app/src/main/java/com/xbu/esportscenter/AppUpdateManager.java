@@ -27,8 +27,10 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,21 +58,11 @@ public final class AppUpdateManager {
         public final String error;
         public final boolean requiresInstallPermission;
 
-        State(
-                boolean checking,
-                boolean downloading,
-                boolean available,
-                String latestVersionName,
-                int latestVersionCode,
-                String changelog,
-                String sourceLabel,
-                int progressPercent,
-                long downloadedBytes,
-                long totalBytes,
-                String status,
-                String error,
-                boolean requiresInstallPermission
-        ) {
+        State(boolean checking, boolean downloading, boolean available,
+              String latestVersionName, int latestVersionCode, String changelog,
+              String sourceLabel, int progressPercent, long downloadedBytes,
+              long totalBytes, String status, String error,
+              boolean requiresInstallPermission) {
             this.checking = checking;
             this.downloading = downloading;
             this.available = available;
@@ -131,15 +123,8 @@ public final class AppUpdateManager {
         final long size;
         final String sourceLabel;
 
-        Candidate(
-                String versionName,
-                int versionCode,
-                String changelog,
-                String apkUrl,
-                String sha256,
-                long size,
-                String sourceLabel
-        ) {
+        Candidate(String versionName, int versionCode, String changelog,
+                  String apkUrl, String sha256, long size, String sourceLabel) {
             this.versionName = versionName;
             this.versionCode = versionCode;
             this.changelog = changelog;
@@ -165,8 +150,6 @@ public final class AppUpdateManager {
             "https://github.com/xbu080675-creator/Game-star/releases/download/preview/latest.json";
     private static final String RELEASE_PATH_PREFIX =
             "/xbu080675-creator/Game-star/releases/download/preview/";
-    private static final String DEV_SIGNER_SHA256 =
-            "1d1c44e7bfabeb5c4bab863408f07aef1fa806c4337827830f4b72fb2920bf35";
 
     private static final int PROBE_BYTES = 256 * 1024;
     private static final int PROBE_MIN_BYTES = 48 * 1024;
@@ -200,10 +183,6 @@ public final class AppUpdateManager {
         this.listener = listener;
     }
 
-    public State getState() {
-        return state;
-    }
-
     public String getStateJson() {
         return state.toJson().toString();
     }
@@ -212,7 +191,7 @@ public final class AppUpdateManager {
         if (state.checking || state.downloading) return;
 
         State old = state;
-        postState(new State(
+        emit(new State(
                 true, false, old.available, old.latestVersionName, old.latestVersionCode,
                 old.changelog, old.sourceLabel, old.progressPercent, old.downloadedBytes,
                 old.totalBytes, "正在检查 GitHub 更新…", null, false
@@ -223,16 +202,16 @@ public final class AppUpdateManager {
                 Candidate found = fetchPreferredRelease();
                 candidate = found;
                 boolean available = found.versionCode > BuildConfig.VERSION_CODE;
-                String status = available
-                        ? "发现新版本 " + found.versionName + " · " + found.sourceLabel
-                        : "当前已是最新版本 · " + BuildConfig.VERSION_NAME;
-                postState(new State(
+                emit(new State(
                         false, false, available, found.versionName, found.versionCode,
                         found.changelog, found.sourceLabel, 0, 0, found.size,
-                        status, null, false
+                        available
+                                ? "发现新版本 " + found.versionName + " · " + found.sourceLabel
+                                : "当前已是最新版本 · " + BuildConfig.VERSION_NAME,
+                        null, false
                 ));
             } catch (Throwable t) {
-                postState(new State(
+                emit(new State(
                         false, false, false, "", 0, "", "", 0, 0, 0,
                         userInitiated ? "检查更新失败" : "后台更新检查暂不可用",
                         userInitiated ? shortMessage(t) : null,
@@ -248,7 +227,7 @@ public final class AppUpdateManager {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 !context.getPackageManager().canRequestPackageInstalls()) {
-            postState(new State(
+            emit(new State(
                     false, false, true, c.versionName, c.versionCode, c.changelog,
                     state.sourceLabel, state.progressPercent, state.downloadedBytes, c.size,
                     "需要允许竞界安装更新包", null, true
@@ -261,7 +240,7 @@ public final class AppUpdateManager {
             return;
         }
 
-        postState(new State(
+        emit(new State(
                 false, true, true, c.versionName, c.versionCode, c.changelog,
                 state.sourceLabel, 0, 0, c.size,
                 "正在测速 GitHub 与镜像通道…", null, false
@@ -271,14 +250,14 @@ public final class AppUpdateManager {
             try {
                 File apk = downloadWithFallback(c);
                 verifyDownloadedApk(apk, c);
-                postState(new State(
+                emit(new State(
                         false, false, true, c.versionName, c.versionCode, c.changelog,
                         state.sourceLabel, 100, apk.length(), c.size,
                         "下载与安全校验完成 · 正在打开系统安装器", null, false
                 ));
                 launchInstaller(apk);
             } catch (Throwable t) {
-                postState(new State(
+                emit(new State(
                         false, false, true, c.versionName, c.versionCode, c.changelog,
                         state.sourceLabel, state.progressPercent, state.downloadedBytes, c.size,
                         "更新失败", shortMessage(t), false
@@ -308,8 +287,9 @@ public final class AppUpdateManager {
 
     private Candidate fetchManifest(Transport transport) throws Exception {
         JSONObject root = getJson(MANIFEST_URL, transport);
-        int schema = root.optInt("schemaVersion", 1);
-        if (schema < 1) throw new IllegalStateException("更新清单格式无效");
+        if (root.optInt("schemaVersion", 1) < 1) {
+            throw new IllegalStateException("更新清单格式无效");
+        }
 
         String channel = root.optString("channel", "preview").trim();
         if (!channel.isEmpty() && !"preview".equalsIgnoreCase(channel)) {
@@ -373,9 +353,8 @@ public final class AppUpdateManager {
     }
 
     private List<Probe> rankTransports(Candidate c) {
-        List<Transport> transports = allTransports();
         List<Callable<Probe>> tasks = new ArrayList<>();
-        for (Transport t : transports) {
+        for (Transport t : allTransports()) {
             tasks.add(() -> probe(c, t));
         }
 
@@ -447,7 +426,7 @@ public final class AppUpdateManager {
 
         if (!ranked.isEmpty()) {
             Probe best = ranked.get(0);
-            postState(new State(
+            emit(new State(
                     false, true, true, c.versionName, c.versionCode, c.changelog,
                     best.transport.label, 0, state.downloadedBytes, c.size,
                     "测速完成 · " + best.transport.label + " · " + formatRate(best.bytesPerSecond),
@@ -459,7 +438,7 @@ public final class AppUpdateManager {
         for (Transport t : order) {
             try {
                 State s = state;
-                postState(new State(
+                emit(new State(
                         false, true, true, c.versionName, c.versionCode, c.changelog,
                         t.label, s.progressPercent, s.downloadedBytes, c.size,
                         "正在通过 " + t.label + " 下载 " + c.versionName + "…",
@@ -514,10 +493,8 @@ public final class AppUpdateManager {
 
             long downloaded = existing;
             long lastUi = 0L;
-            try (
-                    BufferedInputStream input = new BufferedInputStream(connection.getInputStream());
-                    FileOutputStream output = new FileOutputStream(part, append)
-            ) {
+            try (BufferedInputStream input = new BufferedInputStream(connection.getInputStream());
+                 FileOutputStream output = new FileOutputStream(part, append)) {
                 byte[] buffer = new byte[64 * 1024];
                 int read;
                 while ((read = input.read(buffer)) >= 0) {
@@ -530,7 +507,7 @@ public final class AppUpdateManager {
                         int percent = c.size > 0
                                 ? (int) Math.min(99L, downloaded * 100L / c.size)
                                 : 0;
-                        postState(new State(
+                        emit(new State(
                                 false, true, true, c.versionName, c.versionCode, c.changelog,
                                 t.label, percent, downloaded, c.size,
                                 "正在下载 · " + t.label, null, false
@@ -558,47 +535,80 @@ public final class AppUpdateManager {
     }
 
     private void verifyDownloadedApk(File apk, Candidate c) throws Exception {
-        String actualHash = sha256(apk);
-        if (!actualHash.equals(c.sha256)) {
+        if (!sha256(apk).equals(c.sha256)) {
             if (apk.exists()) apk.delete();
             throw new SecurityException("SHA-256 校验失败");
         }
 
         PackageManager pm = context.getPackageManager();
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-                ? PackageManager.GET_SIGNING_CERTIFICATES
-                : PackageManager.GET_SIGNATURES;
-        PackageInfo info = pm.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
-        if (info == null) throw new SecurityException("无法读取更新包信息");
-        if (!OFFICIAL_PACKAGE.equals(info.packageName)) {
+        int flags = signingFlags();
+        PackageInfo archive = pm.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+        if (archive == null) throw new SecurityException("无法读取更新包信息");
+        if (!OFFICIAL_PACKAGE.equals(archive.packageName)) {
             throw new SecurityException("更新包包名不匹配");
         }
 
         long archiveVersion = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-                ? info.getLongVersionCode()
-                : info.versionCode;
+                ? archive.getLongVersionCode()
+                : archive.versionCode;
         if (archiveVersion != c.versionCode) {
             throw new SecurityException("更新包 versionCode 不匹配");
         }
 
-        Signature[] signatures;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && info.signingInfo != null) {
-            signatures = info.signingInfo.getApkContentsSigners();
-        } else {
-            signatures = info.signatures;
+        Set<String> trusted = installedSignerDigests(pm);
+        Set<String> incoming = signerDigests(archive);
+        if (trusted.isEmpty() || incoming.isEmpty()) {
+            throw new SecurityException("无法读取固定签名证书");
         }
-        if (signatures == null || signatures.length == 0) {
-            throw new SecurityException("更新包没有签名");
-        }
-
-        boolean trusted = false;
-        for (Signature signature : signatures) {
-            if (DEV_SIGNER_SHA256.equals(sha256(signature.toByteArray()))) {
-                trusted = true;
+        boolean signerMatch = false;
+        for (String digest : incoming) {
+            if (trusted.contains(digest)) {
+                signerMatch = true;
                 break;
             }
         }
-        if (!trusted) throw new SecurityException("更新包签名证书不匹配");
+        if (!signerMatch) {
+            throw new SecurityException("更新包签名与当前安装版本不一致");
+        }
+    }
+
+    private Set<String> installedSignerDigests(PackageManager pm) throws Exception {
+        PackageInfo installed;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            installed = pm.getPackageInfo(
+                    context.getPackageName(),
+                    PackageManager.PackageInfoFlags.of(signingFlags())
+            );
+        } else {
+            installed = pm.getPackageInfo(context.getPackageName(), signingFlags());
+        }
+        return signerDigests(installed);
+    }
+
+    private static Set<String> signerDigests(PackageInfo info) throws Exception {
+        Set<String> result = new HashSet<>();
+        Signature[] signatures;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && info.signingInfo != null) {
+            if (info.signingInfo.hasMultipleSigners()) {
+                signatures = info.signingInfo.getApkContentsSigners();
+            } else {
+                signatures = info.signingInfo.getSigningCertificateHistory();
+            }
+        } else {
+            signatures = info.signatures;
+        }
+        if (signatures != null) {
+            for (Signature signature : signatures) {
+                result.add(sha256(signature.toByteArray()));
+            }
+        }
+        return result;
+    }
+
+    private static int signingFlags() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? PackageManager.GET_SIGNING_CERTIFICATES
+                : PackageManager.GET_SIGNATURES;
     }
 
     private void launchInstaller(File apk) {
@@ -615,7 +625,7 @@ public final class AppUpdateManager {
                 context.startActivity(intent);
             } catch (Throwable t) {
                 Candidate c = candidate;
-                postState(new State(
+                emit(new State(
                         false, false, c != null,
                         c == null ? "" : c.versionName,
                         c == null ? 0 : c.versionCode,
@@ -678,7 +688,7 @@ public final class AppUpdateManager {
 
     private void postStatus(String status) {
         State s = state;
-        postState(new State(
+        emit(new State(
                 s.checking, s.downloading, s.available,
                 s.latestVersionName, s.latestVersionCode, s.changelog,
                 s.sourceLabel, s.progressPercent, s.downloadedBytes,
@@ -686,7 +696,7 @@ public final class AppUpdateManager {
         ));
     }
 
-    private void postState(State newState) {
+    private void emit(State newState) {
         state = newState;
         Listener l = listener;
         if (l != null) {
@@ -733,10 +743,8 @@ public final class AppUpdateManager {
     }
 
     private static void copyFile(File from, File to) throws Exception {
-        try (
-                FileInputStream input = new FileInputStream(from);
-                FileOutputStream output = new FileOutputStream(to)
-        ) {
+        try (FileInputStream input = new FileInputStream(from);
+             FileOutputStream output = new FileOutputStream(to)) {
             byte[] buffer = new byte[64 * 1024];
             int read;
             while ((read = input.read(buffer)) >= 0) {
