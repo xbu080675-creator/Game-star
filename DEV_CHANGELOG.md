@@ -1,5 +1,14 @@
 # Game Star Box Development Changelog
 
+## 0.4.14 / versionCode 27
+
+- 修正 0.4.13 实机观感过于抽象的问题：系统 Splash 不再自己绘制圆环、星形核心、分离菱形和蓝色弧线，避免形成独立“小 loading 标志”。
+- Android 12+ 的平台 Splash 改为纯黑背景 + 透明 `gsb_boot_transparent` 图标，并将系统 Splash 动画时长设为 0；Android 8-11 Starting Window 也只保留纯黑背景。
+- 启动视觉职责重新收口：Android 平台层只提供与现有 WebView 动画第 0 帧一致的黑场，所有可见品牌运动继续由已验收的 GAME STAR BOX 动画负责。
+- 删除 Starting Theme 对 `gsb_boot_preview` 的依赖，避免第二套启动图形抢占视觉主体；原 4.02 秒动画、`fairy_boot.ogg`、触觉节点和主界面均不改。
+- 更新启动模块文档与 CI Startup Identity Guard，CI 现在会拒绝重新把独立 `gsb_boot_preview` 挂回 Starting Theme。
+- 不新增权限、不调用 Shizuku、不执行 shell、不读写 Settings，不扩大任何 REDMAGIC/Privileged capability。
+
 ## 0.4.13 / versionCode 26
 
 - 将 Android Launcher/系统 Starting Window 正式纳入 Game Star Box 启动视觉链，消除实机录像中 1~2 秒附近一闪而过的白色 Android/default splash。
