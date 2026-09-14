@@ -25,17 +25,20 @@ import java.util.concurrent.TimeUnit;
  * - fixed package id only;
  * - no arbitrary command API;
  * - APK bytes are streamed over Binder and re-hashed inside the privileged process;
- * - staging is restricted to /data/local/tmp with a fixed filename prefix.
+ * - staging is restricted to /data/local/tmp with a fixed filename prefix;
+ * - post-update relaunch is restricted to the fixed Game Star Box activity.
  */
 public final class PrivilegedInstallerService extends IPrivilegedInstaller.Stub {
 
     private static final String TAG = "[GSB-PRIV]";
     private static final String INSTALL_TAG = "[GSB-INSTALL]";
     private static final String OFFICIAL_PACKAGE = "com.xbu.esportscenter";
+    private static final String OFFICIAL_ACTIVITY = "com.xbu.esportscenter/.MainActivity";
     private static final String STAGING_PREFIX = "gsb-self-update-";
     private static final long MAX_APK_BYTES = 512L * 1024L * 1024L;
     private static final int MAX_CHUNK_BYTES = 64 * 1024;
     private static final long INSTALL_TIMEOUT_SECONDS = 120L;
+    private static final long RESTART_TIMEOUT_SECONDS = 12L;
 
     private File partFile;
     private File apkFile;
@@ -167,7 +170,7 @@ public final class PrivilegedInstallerService extends IPrivilegedInstaller.Stub 
             int exit = process.exitValue();
             if (exit != 0 || !commandOutput.toLowerCase(Locale.ROOT).contains("success")) {
                 Log.w(INSTALL_TAG, "pm install failed exit=" + exit + " out=" + sanitize(commandOutput));
-                return failAfterInstall("GSB-PRIV-INSTALL-COMMIT-FAILED");
+                return failAfterInstall(classifyInstallFailure(commandOutput));
             }
 
             deleteQuietly(apkFile);
@@ -177,7 +180,15 @@ public final class PrivilegedInstallerService extends IPrivilegedInstaller.Stub 
             expectedSize = 0L;
             receivedSize = 0L;
             Log.i(INSTALL_TAG, "self-update committed successfully");
-            return "OK";
+
+            boolean restarted = restartGameStarBox();
+            if (restarted) {
+                Log.i(INSTALL_TAG, "post-update app restart requested successfully");
+                return "OK:RESTARTED";
+            }
+
+            Log.w(INSTALL_TAG, "GSB-PRIV-INSTALL-RESTART-FAILED");
+            return "OK:RESTART-FAILED";
         } catch (Throwable t) {
             Log.e(INSTALL_TAG, "GSB-PRIV-INSTALL-FINISH-FAILED", t);
             return failAfterInstall("GSB-PRIV-INSTALL-FINISH-FAILED");
@@ -230,6 +241,55 @@ public final class PrivilegedInstallerService extends IPrivilegedInstaller.Stub 
         expectedSha256 = null;
         expectedSize = 0L;
         receivedSize = 0L;
+    }
+
+    private static String classifyInstallFailure(String commandOutput) {
+        String value = commandOutput == null ? "" : commandOutput.toLowerCase(Locale.ROOT);
+        if (value.contains("install_failed_user_restricted")
+                || value.contains("user restricted")
+                || value.contains("install is disabled")
+                || value.contains("adb install") && value.contains("disabled")) {
+            return "GSB-PRIV-INSTALL-PACKAGE-DENIED-ADB-POLICY";
+        }
+        return "GSB-PRIV-INSTALL-COMMIT-FAILED";
+    }
+
+    private static boolean restartGameStarBox() {
+        java.lang.Process process = null;
+        try {
+            Thread.sleep(420L);
+            ProcessBuilder builder = new ProcessBuilder(
+                    "/system/bin/am",
+                    "start",
+                    "-S",
+                    "-W",
+                    "-n",
+                    OFFICIAL_ACTIVITY
+            );
+            builder.redirectErrorStream(true);
+            process = builder.start();
+            boolean finished = process.waitFor(RESTART_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return false;
+            }
+            String output = readProcessOutput(process.getInputStream());
+            int exit = process.exitValue();
+            if (exit != 0) {
+                Log.w(INSTALL_TAG, "app restart failed exit=" + exit + " out=" + sanitize(output));
+                return false;
+            }
+            return true;
+        } catch (Throwable t) {
+            Log.w(INSTALL_TAG, "app restart failed", t);
+            if (process != null) {
+                try {
+                    process.destroyForcibly();
+                } catch (Throwable ignored) {
+                }
+            }
+            return false;
+        }
     }
 
     private static void cleanupStaleFiles() {
