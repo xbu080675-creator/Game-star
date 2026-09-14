@@ -37,6 +37,15 @@
     document.head.appendChild(script);
   }
 
+  function injectStylesheetOnce(id, href) {
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
   function loadPostBootRuntime() {
     if (window.__gsbPostBootRuntimeLoaded) return;
     window.__gsbPostBootRuntimeLoaded = true;
@@ -44,6 +53,7 @@
     try { if (window.GSBRuntime) GSBRuntime.ready(); } catch (_) {}
 
     const start = () => {
+      injectStylesheetOnce('gsb-scroll-runtime-css', 'scroll-runtime.css');
       injectScriptOnce('gsb-gesture-runtime-js', 'gesture-runtime.js');
       injectScriptOnce('gsb-game-library-js', 'game-library.js');
       injectScriptOnce('gsb-session-runtime-js', 'session-runtime.js');
