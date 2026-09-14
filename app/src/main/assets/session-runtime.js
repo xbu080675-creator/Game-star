@@ -49,6 +49,10 @@
           : '启动';
       }
     }
+
+    try {
+      document.dispatchEvent(new CustomEvent('gsb-session-state', { detail: latest }));
+    } catch (_) {}
   }
 
   function read() {
