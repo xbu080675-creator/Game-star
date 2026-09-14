@@ -114,9 +114,26 @@ jobs:
             exit 1
           fi
           if grep -R -Eqi 'Settings\.(Global|Secure|System)\.put|rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime' "$RM"; then
-            echo '0.4.12 REDMAGIC adapter must remain read-only and non-privileged' >&2
+            echo 'REDMAGIC adapter must remain read-only and non-privileged in this preview' >&2
             exit 1
           fi
+
+      - name: Guard Game Star Box startup identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST='app/src/main/AndroidManifest.xml'
+          BASE='app/src/main/res/values/styles.xml'
+          V31='app/src/main/res/values-v31/styles.xml'
+          CORE_ICON='app/src/main/res/drawable/gsb_boot_core.xml'
+          PREVIEW='app/src/main/res/drawable/gsb_boot_preview.xml'
+          test -f "$MANIFEST" -a -f "$BASE" -a -f "$V31" -a -f "$CORE_ICON" -a -f "$PREVIEW"
+          grep -q 'android:theme="@style/Theme.EsportsCenter.Starting"' "$MANIFEST"
+          grep -q 'name="Theme.EsportsCenter.Starting"' "$BASE"
+          grep -q '@drawable/gsb_boot_preview' "$BASE"
+          grep -q 'android:windowSplashScreenBackground">#000000' "$V31"
+          grep -q 'android:windowSplashScreenAnimatedIcon">@drawable/gsb_boot_core' "$V31"
+          grep -q '@drawable/gsb_boot_core' "$PREVIEW"
 
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
@@ -163,7 +180,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.12：REDMAGIC Entry 接管准备版。新增平台无关 GameEntryCoordinator，并把竞技键真实关闭→开启边沿转换成语义化入口请求；启动时只建立 baseline，避免伪触发。仍不写 Settings、不新增 Shizuku 权限、不执行 shell、不修改原红魔游戏空间行为。"
+              "changelog": "0.4.13：统一启动视觉。Android 系统 Splash/Starting Window 改为纯黑 + Game Star Box 核心标记，消除启动时一闪而过的白色 Android/default 页面，并与现有 GAME STAR BOX WebView 动画直接衔接。本版不改变已验收的 4.02 秒音画时间轴，不新增权限或特权能力。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -209,13 +226,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.12 新增 REDMAGIC 竞技键语义边沿与 Core GameEntryCoordinator；仍保持红魔 Adapter 只读，不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.13 将 Android System Splash/Starting Window 与 Game Star Box 启动动画统一为同一套黑场核心视觉，消除默认白页/Android 图标闪现；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.12 新增 REDMAGIC 竞技键语义边沿与 Core GameEntryCoordinator；仍保持红魔 Adapter 只读，不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.13 将 Android System Splash/Starting Window 与 Game Star Box 启动动画统一为同一套黑场核心视觉，消除默认白页/Android 图标闪现；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
