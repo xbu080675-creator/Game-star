@@ -7,8 +7,8 @@ package com.xbu.esportscenter.privileged;
 interface IPrivilegedInstaller {
     void destroy() = 16777114; // Reserved destroy transaction used by Shizuku UserService.
 
-    int beginInstall(long expectedSize, String expectedSha256, String packageName);
-    int writeChunk(in byte[] data, int length);
-    String finishInstall();
-    void cancelInstall();
+    int beginInstall(long expectedSize, String expectedSha256, String packageName) = 1;
+    int writeChunk(in byte[] data, int length) = 2;
+    String finishInstall() = 3;
+    void cancelInstall() = 4;
 }
