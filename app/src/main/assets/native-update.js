@@ -4,7 +4,6 @@
 
     const bootEl = document.getElementById('boot');
     let stopped = false;
-    let polls = 0;
 
     // Compatibility marker for the existing Boot guard. Dynamic playback-rate control is
     // intentionally disabled: the approved boot animation now runs at its native 1.0x clock.
@@ -18,22 +17,16 @@
       if (bootEl && bootEl.classList.contains('done')) stopped = true;
     }
 
-    function readBootState() {
-      try {
-        const raw = GSBBoot.state();
-        if (raw) applyBootState(JSON.parse(raw));
-      } catch (_) {}
-    }
-
     window.onGSBBootState = applyBootState;
-    readBootState();
+    try {
+      const raw = GSBBoot.state();
+      if (raw) applyBootState(JSON.parse(raw));
+    } catch (_) {}
     try { GSBBoot.webViewReady(); } catch (_) {}
 
-    const timer = setInterval(() => {
-      polls++;
-      readBootState();
-      if (stopped || polls >= 14) clearInterval(timer);
-    }, 320);
+    // No periodic JS<->native bridge polling during the boot animation. Native pushes semantic
+    // boot snapshots when they change; polling used to create avoidable main-thread work while
+    // WebView was trying to render the branded startup sequence.
   }
 
   function injectScriptOnce(id, src) {
@@ -47,6 +40,8 @@
   function loadPostBootRuntime() {
     if (window.__gsbPostBootRuntimeLoaded) return;
     window.__gsbPostBootRuntimeLoaded = true;
+
+    try { if (window.GSBRuntime) GSBRuntime.ready(); } catch (_) {}
 
     const start = () => {
       injectScriptOnce('gsb-game-library-js', 'game-library.js');
