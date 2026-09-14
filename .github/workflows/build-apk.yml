@@ -83,6 +83,25 @@ jobs:
           Full evidence: docs/licenses/music/SPACELIFE_14_CC0_EVIDENCE.md
           EOF
 
+      - name: Guard privileged install surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          AIDL='app/src/main/aidl/com/xbu/esportscenter/privileged/IPrivilegedInstaller.aidl'
+          ADAPTER='app/src/main/java/com/xbu/esportscenter/privileged/ShizukuSelfUpdateAdapter.java'
+          SERVICE='app/src/main/java/com/xbu/esportscenter/privileged/PrivilegedInstallerService.java'
+          test -f "$AIDL" -a -f "$ADAPTER" -a -f "$SERVICE"
+          grep -q 'com.xbu.esportscenter' "$SERVICE"
+          grep -q 'installVerifiedSelfUpdate' "$ADAPTER"
+          if grep -Eqi 'runShell|execCommand|interface .*Shell|String command' "$AIDL" "$ADAPTER"; then
+            echo 'Generic privileged execution surface detected' >&2
+            exit 1
+          fi
+          if grep -Eqi 'sh[[:space:]]+-c' "$SERVICE"; then
+            echo 'Dynamic sh -c is forbidden in privileged installer' >&2
+            exit 1
+          fi
+
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
 
@@ -128,7 +147,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.7：重做原生 OTA 安装体验；新增主机风系统更新面板、下载进度与安全校验提示、错误恢复入口，并在未知来源安装授权返回后自动继续已发起的更新流程。"
+              "changelog": "0.4.8：接入受限 Shizuku 自更新通道。已验证的竞界 APK 可通过 shell 身份静默覆盖安装，不再弹 Android 系统安装器；仅允许 com.xbu.esportscenter，自更新失败或 Shizuku 不可用时安全回退系统安装器。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -175,13 +194,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.8 起支持受限 Shizuku 自更新：仅竞界自身可走静默覆盖安装；不可用时安全回退系统安装器。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。GitHub 是唯一版本真源；APP 内自动检测并通过多镜像测速/回退下载。第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.8 起支持受限 Shizuku 自更新：仅竞界自身可走静默覆盖安装；不可用时安全回退系统安装器。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
