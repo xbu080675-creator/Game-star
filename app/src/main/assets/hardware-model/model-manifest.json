@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "runtimeVersion": "0.4.27-v8",
+  "pack": {
+    "id": "game-star-box-hardware-v8",
+    "productionReady": false,
+    "sourcePolicy": "DCC_HIGH_RENDER_ONLY",
+    "renderRoot": "hardware-model/render-v8",
+    "acceptedSourceFormats": ["blend", "c4d", "fbx", "usd", "usdz", "abc"],
+    "acceptedRenderFormats": ["webp", "png", "avif", "webm"],
+    "notes": "No generated/vector placeholder may set productionReady=true."
+  },
+  "assets": [
+    {
+      "id": "chassis-shell",
+      "logicalRequest": "hardware-v7/chassis-shell.svg",
+      "renderPath": "hardware-model/render-v8/chassis-shell.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_CHASSIS_ASSEMBLY"
+    },
+    {
+      "id": "pcb-board",
+      "logicalRequest": "hardware-v7/pcb-board.svg",
+      "renderPath": "hardware-model/render-v8/pcb-board.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_PCB_ASSEMBLY"
+    },
+    {
+      "id": "cooling-fan",
+      "logicalRequest": "hardware-v7/cooling-fan.svg",
+      "renderPath": "hardware-model/render-v8/cooling-fan.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_THERMAL_FAN"
+    },
+    {
+      "id": "linear-motor",
+      "logicalRequest": "hardware-v7/linear-motor.svg",
+      "renderPath": "hardware-model/render-v8/linear-motor.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_0815_LINEAR_MOTOR"
+    },
+    {
+      "id": "mechanism-detent",
+      "logicalRequest": "hardware-v7/mechanism-detent.svg",
+      "renderPath": "hardware-model/render-v8/mechanism-detent.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_MECH_DETENT"
+    },
+    {
+      "id": "mechanism-ratchet",
+      "logicalRequest": "hardware-v7/mechanism-ratchet.svg",
+      "renderPath": "hardware-model/render-v8/mechanism-ratchet.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_MECH_RATCHET"
+    },
+    {
+      "id": "mechanism-latch",
+      "logicalRequest": "hardware-v7/mechanism-latch.svg",
+      "renderPath": "hardware-model/render-v8/mechanism-latch.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_MECH_LATCH"
+    },
+    {
+      "id": "maintenance-core",
+      "logicalRequest": "hardware-v7/maintenance-core.svg",
+      "renderPath": "hardware-model/render-v8/maintenance-core.webp",
+      "mimeType": "image/webp",
+      "required": true,
+      "sourceObject": "GSB_MAINTENANCE_CORE"
+    }
+  ],
+  "shotContract": {
+    "version": 1,
+    "optionalRoot": "hardware-model/shots-v8",
+    "supportedModes": ["still", "clip", "scrub-clip", "pose-grid", "layer-stack"],
+    "requiredEventIds": [
+      "SHOULDER_LEFT_FOCUS",
+      "SHOULDER_RIGHT_FOCUS",
+      "MOTION_TILT",
+      "GLASS_REVEAL",
+      "DETENT_STEP",
+      "RATCHET_TOOTH",
+      "LATCH_RELEASE",
+      "THERMAL_SPINUP",
+      "IGNITION"
+    ]
+  }
+}
