@@ -16,23 +16,26 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Read-only Android launcher/game catalog.
  *
- * It only enumerates packages that expose a normal MAIN/LAUNCHER entry. Game classification uses
- * Android's ApplicationInfo game category/flag. Manual additions are selected by the user in the
- * local UI from this same launchable allow-list.
+ * Performance rule: launcher discovery and launch validation must never rasterize every installed
+ * application icon. Only auto-detected games receive an icon in the initial catalog; generic
+ * launchables stay metadata-only until a future lazy icon API is introduced.
  */
 public final class InstalledGameCatalog {
-    private static final int ICON_SIZE = 128;
+    private static final int ICON_SIZE = 96;
 
     private final Context appContext;
     private final PackageManager packageManager;
     private volatile String cachedJson;
+    private volatile Set<String> cachedLaunchablePackages;
 
     public InstalledGameCatalog(Context context) {
         appContext = context.getApplicationContext();
@@ -52,6 +55,7 @@ public final class InstalledGameCatalog {
 
     public synchronized void invalidate() {
         cachedJson = null;
+        cachedLaunchablePackages = null;
     }
 
     public Intent createValidatedLaunchIntent(String packageName) {
@@ -75,11 +79,15 @@ public final class InstalledGameCatalog {
         JSONArray launchables = new JSONArray();
         try {
             List<Entry> entries = queryEntries();
+            Set<String> allowList = new HashSet<>();
             for (Entry entry : entries) {
-                JSONObject item = entry.toJson();
-                launchables.put(item);
-                if (entry.game) games.put(entry.toJson());
+                allowList.add(entry.packageName);
+                // Generic launcher candidates deliberately omit icon payloads. Encoding dozens or
+                // hundreds of 128px PNGs synchronously caused severe WebView stalls on real devices.
+                launchables.put(entry.toJson(false));
+                if (entry.game) games.put(entry.toJson(true));
             }
+            cachedLaunchablePackages = allowList;
             root.put("autoGames", games);
             root.put("launchables", launchables);
             root.put("error", JSONObject.NULL);
@@ -123,7 +131,8 @@ public final class InstalledGameCatalog {
             if (label.isBlank()) label = packageName;
 
             boolean game = isGame(app);
-            String icon = encodeIcon(info);
+            // Only real games need artwork on the immediately visible home/library surface.
+            String icon = game ? encodeIcon(info) : "";
             unique.put(packageName, new Entry(label, packageName, game, icon));
         }
 
@@ -134,10 +143,32 @@ public final class InstalledGameCatalog {
     }
 
     private boolean isVisibleLauncherPackage(String packageName) {
-        for (Entry entry : queryEntries()) {
-            if (packageName.equals(entry.packageName)) return true;
+        Set<String> cached = cachedLaunchablePackages;
+        if (cached != null) return cached.contains(packageName);
+
+        // Validation fallback intentionally performs a metadata-only launcher query. It must not
+        // call queryEntries(), because queryEntries() may render game icons for catalog display.
+        Set<String> allowList = queryLaunchablePackages();
+        cachedLaunchablePackages = allowList;
+        return allowList.contains(packageName);
+    }
+
+    private Set<String> queryLaunchablePackages() {
+        Set<String> packages = new HashSet<>();
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(Intent.CATEGORY_LAUNCHER);
+        try {
+            List<ResolveInfo> resolved = packageManager.queryIntentActivities(query, 0);
+            for (ResolveInfo info : resolved) {
+                if (info == null || info.activityInfo == null) continue;
+                String packageName = info.activityInfo.packageName;
+                if (packageName == null || packageName.isBlank()) continue;
+                if (appContext.getPackageName().equals(packageName)) continue;
+                packages.add(packageName);
+            }
+        } catch (RuntimeException ignored) {
         }
-        return false;
+        return packages;
     }
 
     @SuppressWarnings("deprecation")
@@ -157,7 +188,7 @@ public final class InstalledGameCatalog {
             drawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE);
             drawable.draw(canvas);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 88, out);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 82, out);
             bitmap.recycle();
             return "data:image/png;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
         } catch (Throwable ignored) {
@@ -178,13 +209,13 @@ public final class InstalledGameCatalog {
             this.iconDataUrl = iconDataUrl == null ? "" : iconDataUrl;
         }
 
-        JSONObject toJson() {
+        JSONObject toJson(boolean includeIcon) {
             JSONObject json = new JSONObject();
             try {
                 json.put("label", label);
                 json.put("packageName", packageName);
                 json.put("game", game);
-                json.put("icon", iconDataUrl);
+                json.put("icon", includeIcon ? iconDataUrl : "");
             } catch (Throwable ignored) {
             }
             return json;
