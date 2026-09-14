@@ -34,6 +34,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
     private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Shizuku.UserServiceArgs serviceArgs;
+    private final AtomicBoolean bindRequested = new AtomicBoolean(false);
     private final AtomicBoolean serviceBound = new AtomicBoolean(false);
 
     private volatile IRedMagicShoulderReader remote;
@@ -73,6 +74,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
 
     private final Shizuku.OnBinderDeadListener binderDeadListener = () -> {
         remote = null;
+        bindRequested.set(false);
         serviceBound.set(false);
         Log.w(TAG, "GSB-SHOULDER-BINDER-DEAD");
     };
@@ -93,11 +95,12 @@ public final class RedMagicShoulderPrivilegedAdapter {
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
+            bindRequested.set(true);
+            serviceBound.set(true);
             if (!active || destroyed || binder == null || !binder.pingBinder()) {
                 unbindService(true);
                 return;
             }
-            serviceBound.set(true);
             remote = IRedMagicShoulderReader.Stub.asInterface(binder);
             try {
                 String devices = remote.detectDevices();
@@ -116,6 +119,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
         @Override
         public void onServiceDisconnected(ComponentName name) {
             remote = null;
+            bindRequested.set(false);
             serviceBound.set(false);
             if (active && !destroyed) Log.w(TAG, "GSB-SHOULDER-BINDER-DISCONNECTED");
         }
@@ -159,7 +163,7 @@ public final class RedMagicShoulderPrivilegedAdapter {
     }
 
     public void deactivate() {
-        if (!active && remote == null && !serviceBound.get()) return;
+        if (!active && remote == null && !bindRequested.get() && !serviceBound.get()) return;
         active = false;
         permissionRequestInFlight = false;
         main.removeCallbacks(calibrationWatch);
@@ -197,9 +201,15 @@ public final class RedMagicShoulderPrivilegedAdapter {
                 }
                 return;
             }
-            if (serviceBound.get() || remote != null) return;
+            if (bindRequested.get() || serviceBound.get() || remote != null) return;
             Log.i(TAG, "binding read-only REDMAGIC shoulder UserService");
-            Shizuku.bindUserService(serviceArgs, serviceConnection);
+            bindRequested.set(true);
+            try {
+                Shizuku.bindUserService(serviceArgs, serviceConnection);
+            } catch (Throwable t) {
+                bindRequested.set(false);
+                throw t;
+            }
         } catch (Throwable t) {
             Log.w(TAG, "GSB-SHOULDER-SHIZUKU-CONNECT-FAILED", t);
         }
@@ -211,7 +221,9 @@ public final class RedMagicShoulderPrivilegedAdapter {
     }
 
     private void unbindService(boolean remove) {
-        if (!serviceBound.getAndSet(false) && remote == null) return;
+        boolean hadRequest = bindRequested.getAndSet(false);
+        boolean hadBound = serviceBound.getAndSet(false);
+        if (!hadRequest && !hadBound && remote == null) return;
         try {
             if (Shizuku.pingBinder()) {
                 Shizuku.unbindUserService(serviceArgs, serviceConnection, remove);
