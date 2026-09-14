@@ -1,5 +1,14 @@
 # Game Star Box Development Changelog
 
+## 0.4.9 / versionCode 22
+
+- 修复启动动画与 `fairy_boot.ogg` 音画不同步：移除原先 350 ms 强制启动视觉时间轴的抢跑路径。
+- 启动画面在支持 Web Animations API 的 WebView 上改由启动音频 `currentTime` 作为主时钟，CSS 动画暂停后逐帧对齐音频时间；触觉节点继续跟随同一时间轴。
+- 启动音频异常或 1.8 秒内仍未开始播放时，主动停止音频并切入纯视觉兜底，避免“画面先跑、声音随后补上”的错位。
+- 原生更新面板改为更紧凑的主机系统卡片：缩小最大宽高、标题字号、内边距、按钮与进度区占用。
+- 更新说明区域支持卡片内滚动，长 changelog 不再依赖放大整个更新面板。
+- 更新遮罩透明度略降，减少对后台主界面的压迫感；OTA 安全校验与 Shizuku 自更新链路均未放宽。
+
 ## 0.4.8 / versionCode 21
 
 - 接入 Shizuku 13.1.5，新增受限 `Privileged Adapter`，首个且唯一特权用途为 Game Star Box 自身 OTA 静默覆盖安装。
