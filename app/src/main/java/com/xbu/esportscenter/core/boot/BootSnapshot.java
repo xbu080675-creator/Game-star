@@ -15,6 +15,9 @@ public final class BootSnapshot {
         this.phase = phase;
         this.overallProgress = Math.max(0, Math.min(100, overallProgress));
         this.blockingReady = blockingReady;
-        this.completed = Collections.unmodifiableSet(EnumSet.copyOf(completed));
+        EnumSet<BootPhase> copy = completed.isEmpty()
+                ? EnumSet.noneOf(BootPhase.class)
+                : EnumSet.copyOf(completed);
+        this.completed = Collections.unmodifiableSet(copy);
     }
 }
