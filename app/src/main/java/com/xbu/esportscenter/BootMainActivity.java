@@ -1,5 +1,6 @@
 package com.xbu.esportscenter;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +11,7 @@ import com.xbu.esportscenter.core.boot.BootOrchestrator;
 import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.boot.BootSnapshot;
 import com.xbu.esportscenter.core.capability.CapabilityRegistry;
+import com.xbu.esportscenter.platform.android.InstalledGameCatalog;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,12 +19,13 @@ import org.json.JSONObject;
 import java.util.Map;
 
 /**
- * Thin launcher activity that exposes read-only Core runtime state to the local WebView.
- * No privileged or vendor-specific control API is exposed to JavaScript.
+ * Thin launcher activity that exposes typed, narrow runtime state to the local WebView.
+ * No generic shell, Settings write, Shizuku execution or arbitrary package launch surface exists.
  */
 public final class BootMainActivity extends MainActivity {
     private BootOrchestrator boot;
     private CapabilityRegistry capabilities;
+    private InstalledGameCatalog gameCatalog;
     private WebView bootWebView;
     private final BootOrchestrator.Listener bootListener = this::dispatchBootSnapshot;
     private final CapabilityRegistry.Listener capabilityListener = this::dispatchCapabilitySnapshot;
@@ -34,6 +37,7 @@ public final class BootMainActivity extends MainActivity {
         GameStarBoxApplication app = (GameStarBoxApplication) getApplication();
         boot = app.getBootOrchestrator();
         capabilities = app.getCapabilities();
+        gameCatalog = new InstalledGameCatalog(this);
         boot.addListener(bootListener);
         capabilities.addListener(capabilityListener);
 
@@ -41,6 +45,7 @@ public final class BootMainActivity extends MainActivity {
         if (bootWebView != null) {
             bootWebView.addJavascriptInterface(new BootBridge(), "GSBBoot");
             bootWebView.addJavascriptInterface(new CapabilityBridge(), "GSBCapabilities");
+            bootWebView.addJavascriptInterface(new GameBridge(), "GSBGames");
         }
     }
 
@@ -71,6 +76,27 @@ public final class BootMainActivity extends MainActivity {
         @JavascriptInterface
         public String state() {
             return capabilities == null ? "{}" : toJson(capabilities.snapshot());
+        }
+    }
+
+    private final class GameBridge {
+        @JavascriptInterface
+        public String catalog() {
+            return gameCatalog == null ? "{\"autoGames\":[],\"launchables\":[]}" : gameCatalog.catalogJson();
+        }
+
+        @JavascriptInterface
+        public boolean launch(String packageName) {
+            if (gameCatalog == null) return false;
+            Intent launch = gameCatalog.createValidatedLaunchIntent(packageName);
+            if (launch == null) return false;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(launch);
+                } catch (RuntimeException ignored) {
+                }
+            });
+            return true;
         }
     }
 
@@ -141,6 +167,7 @@ public final class BootMainActivity extends MainActivity {
             capabilities.removeListener(capabilityListener);
             capabilities = null;
         }
+        gameCatalog = null;
         bootWebView = null;
         super.onDestroy();
     }
