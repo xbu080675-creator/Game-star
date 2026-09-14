@@ -30,6 +30,8 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
             "hardware_playground_cinematic_migration_0427_v6";
     private static final String PREF_ASSET_REBUILD_MIGRATION_DONE =
             "hardware_playground_asset_rebuild_migration_0427_v7";
+    private static final String PREF_MODEL_PIPELINE_MIGRATION_DONE =
+            "hardware_playground_model_pipeline_migration_0427_v8";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -45,6 +47,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOnePlayableHardwarePlayground(application);
         forceOneCinematicHardwarePlayground(application);
         forceOneAssetRebuiltHardwarePlayground(application);
+        forceOneModelPipelineHardwarePlayground(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -162,6 +165,22 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_ASSET_REBUILD_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time hardware playground asset rebuild migration applied");
+    }
+
+    /**
+     * v8 introduces the typed high-render model pipeline and atomically switchable render pack.
+     * Reset once for install-over validation even while the production render pack intentionally
+     * remains disabled; this confirms the adapter/fallback path on real hardware without pretending
+     * that prototype vectors are finished model assets.
+     */
+    private static void forceOneModelPipelineHardwarePlayground(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_MODEL_PIPELINE_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_MODEL_PIPELINE_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time hardware playground model pipeline migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
