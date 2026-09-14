@@ -81,6 +81,7 @@ jobs:
           grep -q 'nubia_game_scene' "$SERVICE"
           grep -q 'nubia_game_mode' "$SERVICE"
           grep -q 'cc_game_mis_operate' "$SERVICE"
+          grep -q 'nubia_tgk_aw_sar' "$SERVICE"
           grep -q 'KEY_F7' "$SERVICE"
           grep -q 'KEY_F8' "$SERVICE"
           grep -q 'enableCalibrationScene' "$AIDL"
@@ -91,9 +92,9 @@ jobs:
             echo 'Shoulder calibration privilege surface expanded beyond typed reversible contract' >&2
             exit 1
           fi
-          ALLOWED='nubia_game_scene|nubia_game_mode|cc_game_mis_operate'
-          if grep -oE 'nubia_[a-zA-Z0-9_]+|cc_game_[a-zA-Z0-9_]+' "$SERVICE" | grep -Ev "^(${ALLOWED})$"; then
-            echo 'Unexpected REDMAGIC setting key found in privileged service' >&2
+          ALLOWED_IDENTIFIERS='nubia_game_scene|nubia_game_mode|cc_game_mis_operate|nubia_tgk_aw_sar'
+          if grep -oE 'nubia_[a-zA-Z0-9_]+|cc_game_[a-zA-Z0-9_]+' "$SERVICE" | grep -Ev "^(${ALLOWED_IDENTIFIERS})$"; then
+            echo 'Unexpected REDMAGIC setting/device identifier found in privileged service' >&2
             exit 1
           fi
 
