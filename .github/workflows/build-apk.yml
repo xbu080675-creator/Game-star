@@ -167,6 +167,25 @@ jobs:
             exit 1
           fi
 
+      - name: Guard game session runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          LAUNCHER='app/src/main/java/com/xbu/esportscenter/platform/android/AndroidGameSessionLauncher.java'
+          SESSION='app/src/main/java/com/xbu/esportscenter/core/session/GameSessionManager.java'
+          BRIDGE='app/src/main/java/com/xbu/esportscenter/BootMainActivity.java'
+          UI='app/src/main/assets/session-runtime.js'
+          test -f "$LAUNCHER" -a -f "$SESSION" -a -f "$BRIDGE" -a -f "$UI"
+          grep -q 'GameSessionState.LAUNCHING' "$LAUNCHER"
+          grep -q 'onHostStopped' "$LAUNCHER"
+          grep -q 'onHostResumed' "$LAUNCHER"
+          grep -q 'GSBSession' "$BRIDGE"
+          grep -q 'window.onGSBSessionState' "$UI"
+          if grep -Eqi 'UsageStatsManager|AccessibilityService|ProcessBuilder|Runtime\.getRuntime|rikka\.shizuku|Settings\.(Global|Secure|System)\.put' "$LAUNCHER"; then
+            echo 'Game session launcher must stay low-privilege and lifecycle-based' >&2
+            exit 1
+          fi
+
       - name: Guard Boot Orchestrator boundary
         shell: bash
         run: |
@@ -211,6 +230,17 @@ jobs:
             echo 'Independent platform boot artwork must not own startup visuals' >&2
             exit 1
           fi
+
+      - name: Guard version development record
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle | head -1)"
+          VERSION_CODE="$(sed -n 's/.*versionCode \([0-9][0-9]*\).*/\1/p' app/build.gradle | head -1)"
+          DOC="docs/versions/$VERSION_NAME.md"
+          test -n "$VERSION_NAME" -a -n "$VERSION_CODE"
+          test -f "$DOC"
+          grep -q "# Game Star Box $VERSION_NAME / versionCode $VERSION_CODE" "$DOC"
 
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
@@ -257,7 +287,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.19：真实游戏库 Phase 1。移除首页和游戏库的默认示例游戏数据，改为读取本机 MAIN/LAUNCHER 应用并用 Android 游戏分类自动识别；支持从本机可启动应用中手动添加/移除非标准分类游戏，显示真实应用图标/名称/包名并从竞界直接启动。启动目标严格限制在本次枚举的 launcher allow-list；未申请 QUERY_ALL_PACKAGES，不新增 Shizuku/shell/系统写权限。每版本继续独立开发留档。"
+              "changelog": "0.4.20：真实 Game Session Runtime。真实游戏启动现在接入 IDLE→PREPARING→LAUNCHING→RUNNING→SUSPENDED 状态链；返回竞界会挂起 session，再次进入同一游戏会恢复 RUNNING，切换游戏会结束旧 session 后建立新 session。新增只读 GSBSession bridge 与 session-runtime.js；不申请 Usage Access/Accessibility，不扫描全局前台进程，不新增 Shizuku/shell/系统写权限。CI 现在强制要求每个 versionName 存在匹配的 docs/versions/<version>.md 开发文档。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -303,13 +333,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.19 将首页与游戏库从默认示例数据切换为本机真实游戏/用户手动添加的 launcher 应用，并通过受限 GSBGames 桥启动；启动包必须来自当前枚举 allow-list，不申请 QUERY_ALL_PACKAGES，不扩大 Shizuku/REDMAGIC 权限面。独立开发记录见 docs/versions/0.4.19.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.20 将真实游戏启动接入 Game Session 生命周期，并新增只读 GSBSession bridge；本版保持 launcher allow-list，不申请 Usage Access/Accessibility，不扩大 Shizuku/REDMAGIC 权限面。CI 从本版开始强制每个版本必须存在 docs/versions/$VERSION_NAME.md 开发记录。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.19 将首页与游戏库从默认示例数据切换为本机真实游戏/用户手动添加的 launcher 应用，并通过受限 GSBGames 桥启动；启动包必须来自当前枚举 allow-list，不申请 QUERY_ALL_PACKAGES，不扩大 Shizuku/REDMAGIC 权限面。独立开发记录见 docs/versions/0.4.19.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.20 将真实游戏启动接入 Game Session 生命周期，并新增只读 GSBSession bridge；本版保持 launcher allow-list，不申请 Usage Access/Accessibility，不扩大 Shizuku/REDMAGIC 权限面。CI 从本版开始强制每个版本必须存在 docs/versions/$VERSION_NAME.md 开发记录。" \
               --prerelease
           fi
