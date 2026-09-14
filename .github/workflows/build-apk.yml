@@ -118,6 +118,19 @@ jobs:
             exit 1
           fi
 
+      - name: Guard Boot Orchestrator boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BOOT='app/src/main/java/com/xbu/esportscenter/core/boot'
+          test -f "$BOOT/BootPhase.java" -a -f "$BOOT/BootSnapshot.java" -a -f "$BOOT/BootOrchestrator.java"
+          grep -q 'WEBVIEW_READY' "$BOOT/BootPhase.java"
+          grep -q 'BOOT_COMPLETE' "$BOOT/BootPhase.java"
+          if grep -R -Eqi 'android\.|rikka\.shizuku|Settings\.|ProcessBuilder|Runtime\.getRuntime|/system/bin|/sys/' "$BOOT"; then
+            echo 'Boot Orchestrator must remain platform-neutral' >&2
+            exit 1
+          fi
+
       - name: Guard Game Star Box startup identity
         shell: bash
         run: |
@@ -183,7 +196,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.14：修正 0.4.13 启动视觉。Android System Splash/Starting Window 不再绘制独立圆环/核心/loading 标志，而只保留与正式 WebView 动画第 0 帧一致的纯黑场；Android 12+ 使用透明 Splash 图标并将系统动画时长设为 0。原 GAME STAR BOX 动画、音效、触觉和后端权限边界不变。"
+              "changelog": "0.4.15：Boot Orchestrator Phase 1。新增平台无关启动状态机，真实记录 Core、Capability Registry、REDMAGIC Probe 与 Session Runtime 的启动完成度，并保留 WEBVIEW_READY/BOOT_COMPLETE 接口供下一步与现有 GAME STAR BOX 动画联动。本版冻结 0.4.14 已验收启动视觉，不新增权限或特权能力。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -229,13 +242,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.14 修正 0.4.13 的独立 System Splash 图形：平台层只保留纯黑第 0 帧，所有可见品牌运动继续由原 GAME STAR BOX 动画负责；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.15 建立平台无关 Boot Orchestrator，开始用真实 Core/Capability/REDMAGIC/Session 启动状态作为未来动画节奏输入；0.4.14 已验收启动视觉保持冻结，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.14 修正 0.4.13 的独立 System Splash 图形：平台层只保留纯黑第 0 帧，所有可见品牌运动继续由原 GAME STAR BOX 动画负责；不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.15 建立平台无关 Boot Orchestrator，开始用真实 Core/Capability/REDMAGIC/Session 启动状态作为未来动画节奏输入；0.4.14 已验收启动视觉保持冻结，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
