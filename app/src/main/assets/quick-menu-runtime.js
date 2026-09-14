@@ -39,18 +39,21 @@
     return null;
   }
 
-  function setValue(label, text, enabled) {
+  function setValue(label, text, available) {
     const row = findRow(label);
     if (!row) return;
-    let value = row.querySelector('.qValue');
-    let button = row.querySelector('.qBtn');
+    const value = row.querySelector('.qValue');
+    const button = row.querySelector('.qBtn');
     if (value) value.textContent = text;
     if (button) {
       button.textContent = text;
-      button.disabled = !enabled;
-      button.classList.toggle('on', !!enabled);
+      // 0.4.21 is deliberately read-only. AVAILABLE means the semantic capability is verified,
+      // not that this prototype button may invent a control action. A typed action bridge must be
+      // added separately before any button becomes interactive.
+      button.disabled = true;
+      button.classList.remove('on');
     }
-    row.dataset.available = enabled ? '1' : '0';
+    row.dataset.available = available ? '1' : '0';
   }
 
   function renderCapabilities() {
@@ -64,11 +67,11 @@
       const button = hudRow.querySelector('.qBtn');
       const current = session && session.gameId ? session.gameId : '';
       const state = session && session.state ? session.state : 'IDLE';
-      const enabled = state === 'RUNNING' || state === 'SUSPENDED';
+      const hasSession = state === 'RUNNING' || state === 'SUSPENDED';
       if (button) {
-        button.textContent = enabled ? state : '等待游戏';
-        button.disabled = !enabled;
-        button.classList.toggle('on', enabled);
+        button.textContent = hasSession ? state : '等待游戏';
+        button.disabled = true;
+        button.classList.remove('on');
       }
       const small = hudRow.querySelector('small');
       if (small) small.textContent = current || '等待真实 Game Session';
