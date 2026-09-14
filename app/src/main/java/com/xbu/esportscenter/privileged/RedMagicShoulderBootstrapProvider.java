@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,6 +19,9 @@ import android.util.Log;
 public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     private static final String TAG = "[GSB-SHOULDER]";
     private static final String BOOT_ACTIVITY = "com.xbu.esportscenter.BootMainActivity";
+    private static final String PREFS_BOOT = "gsb.boot.profile";
+    private static final String PREF_SHOULDER_CALIBRATED = "shoulder_calibrated_v1";
+    private static final String PREF_SAR_MIGRATION_DONE = "shoulder_sar_migration_0427_v1";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -26,6 +30,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
     public boolean onCreate() {
         if (getContext() == null) return false;
         Application application = (Application) getContext().getApplicationContext();
+        forceOneSarCalibrationAfterPrototype(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -63,6 +68,21 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         application.registerActivityLifecycleCallbacks(callbacks);
         Log.i(TAG, "shoulder calibration lifecycle bootstrap ready");
         return true;
+    }
+
+    /**
+     * The first 0.4.27 prototype could only finish through touch fallback on REDMAGIC 9 Pro+.
+     * Reset that calibration exactly once so an in-place update actually exercises the new SAR
+     * reader. The migration marker prevents future launches from repeatedly erasing calibration.
+     */
+    private static void forceOneSarCalibrationAfterPrototype(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_SAR_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_SAR_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time SAR calibration migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
