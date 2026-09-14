@@ -118,6 +118,22 @@ jobs:
             exit 1
           fi
 
+      - name: Guard REDMAGIC capability survey
+        shell: bash
+        run: |
+          set -euo pipefail
+          IDS='app/src/main/java/com/xbu/esportscenter/core/capability/GameCapabilityIds.java'
+          PROBE='app/src/main/java/com/xbu/esportscenter/platform/redmagic/RedMagicCapabilityProbe.java'
+          SNAP='app/src/main/java/com/xbu/esportscenter/platform/redmagic/RedMagicCapabilityProbeSnapshot.java'
+          test -f "$IDS" -a -f "$PROBE" -a -f "$SNAP"
+          grep -q 'game.performance.boost' "$IDS"
+          grep -q 'game.interruption.shield' "$IDS"
+          grep -q 'device.fan_control' "$IDS"
+          if grep -Eqi 'Settings\.(Global|Secure|System)\.put|rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime|write\(' "$PROBE"; then
+            echo 'REDMAGIC survey must stay read-only' >&2
+            exit 1
+          fi
+
       - name: Guard Boot Orchestrator boundary
         shell: bash
         run: |
@@ -208,7 +224,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.16：Boot Runtime 联动。保留 0.4.14 已验收视觉不变，通过受限 GSBBoot 只读桥把真实 BootOrchestrator 状态送入 WebView；启动音频与现有动画仍使用同一主时钟，但 playbackRate 会随 Core/Capability/REDMAGIC/Session/WebView 实际完成度在 0.72x~1.42x 间动态调整。保留 .MainActivity 组件兼容 OTA 自动重启，不新增权限或特权能力。"
+              "changelog": "0.4.17：REDMAGIC P0 能力普查。新增网络加速、性能增强、内存清理、通知屏蔽及 FPS HUD、准星、风扇、充电分离、肩键、录屏等稳定语义 capability ID；新增只读 REDMAGIC probe，采集 Game Space/Game Assist、已知游戏 Settings 与风扇节点存在性证据。证据不等于可控，对应控制能力在调用路径和回滚完成验证前保持 UNKNOWN。本版不写 Settings、不调用 Shizuku、不执行 shell、不写 sysfs。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -254,13 +270,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.16 将平台无关 BootOrchestrator 正式接入 WebView 启动时钟，动画/启动音频会按真实后端完成度动态变速；0.4.14 已验收视觉保持冻结，.MainActivity 组件继续兼容 OTA 自动重启，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.17 建立 REDMAGIC P0 能力地图与只读证据探测层；语义能力与厂商实现继续解耦，未验证控制路径不得标记 AVAILABLE。本版不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.16 将平台无关 BootOrchestrator 正式接入 WebView 启动时钟，动画/启动音频会按真实后端完成度动态变速；0.4.14 已验收视觉保持冻结，.MainActivity 组件继续兼容 OTA 自动重启，不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.17 建立 REDMAGIC P0 能力地图与只读证据探测层；语义能力与厂商实现继续解耦，未验证控制路径不得标记 AVAILABLE。本版不扩大 Shizuku/REDMAGIC 权限面。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
