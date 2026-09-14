@@ -9,24 +9,15 @@ import java.util.Map;
  * Core never stores vendor API objects, shell commands, Binder handles or Android Context here.
  */
 public final class CapabilityRegistry {
-    public enum State {
-        AVAILABLE,
-        UNAVAILABLE,
-        DENIED,
-        DEAD,
-        UNSUPPORTED,
-        ERROR
-    }
-
     public static final class Entry {
         public final String id;
-        public final State state;
+        public final CapabilityAvailability availability;
         public final String detailCode;
 
-        public Entry(String id, State state, String detailCode) {
+        public Entry(String id, CapabilityAvailability availability, String detailCode) {
             if (id == null || id.isBlank()) throw new IllegalArgumentException("id");
             this.id = id;
-            this.state = state == null ? State.ERROR : state;
+            this.availability = availability == null ? CapabilityAvailability.UNKNOWN : availability;
             this.detailCode = detailCode == null ? "" : detailCode;
         }
     }
@@ -34,6 +25,7 @@ public final class CapabilityRegistry {
     private final Map<String, Entry> entries = new LinkedHashMap<>();
 
     public synchronized void publish(Entry entry) {
+        if (entry == null) throw new IllegalArgumentException("entry");
         entries.put(entry.id, entry);
     }
 
