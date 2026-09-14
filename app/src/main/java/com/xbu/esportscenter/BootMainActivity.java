@@ -30,6 +30,7 @@ import com.xbu.esportscenter.core.session.GameSessionManager;
 import com.xbu.esportscenter.core.session.GameSessionState;
 import com.xbu.esportscenter.platform.android.AndroidGameSessionLauncher;
 import com.xbu.esportscenter.platform.android.AndroidShoulderKeyAdapter;
+import com.xbu.esportscenter.platform.android.HardwareModelAssetAdapter;
 import com.xbu.esportscenter.platform.android.HardwarePlaygroundHapticAdapter;
 import com.xbu.esportscenter.platform.android.HardwarePlaygroundMotionAdapter;
 import com.xbu.esportscenter.platform.android.InstalledGameCatalog;
@@ -67,6 +68,7 @@ public final class BootMainActivity extends MainActivity {
     private AndroidShoulderKeyAdapter shoulderKeyAdapter;
     private HardwarePlaygroundMotionAdapter playgroundMotion;
     private HardwarePlaygroundHapticAdapter playgroundHaptics;
+    private HardwareModelAssetAdapter modelAssets;
     private WebView shoulderBootView;
     private boolean shoulderBootActive;
     private boolean shoulderBootGateOpen;
@@ -118,6 +120,7 @@ public final class BootMainActivity extends MainActivity {
         gameCatalog = new InstalledGameCatalog(this);
         gameLauncher = new AndroidGameSessionLauncher(this, gameCatalog, sessions);
         playgroundHaptics = new HardwarePlaygroundHapticAdapter(this);
+        modelAssets = new HardwareModelAssetAdapter(this);
         playgroundMotion = new HardwarePlaygroundMotionAdapter(
                 this,
                 new HardwarePlaygroundMotionAdapter.Listener() {
@@ -264,7 +267,9 @@ public final class BootMainActivity extends MainActivity {
 
         shoulderBootView.addJavascriptInterface(new ShoulderBootBridge(), "GSBShoulderBoot");
         shoulderBootView.addJavascriptInterface(new HardwarePlaygroundBridge(), "GSBPlayground");
-        shoulderBootView.setWebViewClient(new WebViewClient());
+        shoulderBootView.setWebViewClient(
+                modelAssets == null ? new WebViewClient() : modelAssets
+        );
 
         addContentView(
                 shoulderBootView,
@@ -884,6 +889,7 @@ public final class BootMainActivity extends MainActivity {
             playgroundHaptics.cancel();
             playgroundHaptics = null;
         }
+        modelAssets = null;
 
         if (shoulderBootView != null) {
             ViewGroup parent = (ViewGroup) shoulderBootView.getParent();
