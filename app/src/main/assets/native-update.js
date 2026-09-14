@@ -58,6 +58,13 @@
     document.head.appendChild(gameScript);
   }
 
+  if (!document.getElementById('gsb-session-runtime-js')) {
+    const sessionScript = document.createElement('script');
+    sessionScript.id = 'gsb-session-runtime-js';
+    sessionScript.src = 'session-runtime.js';
+    document.head.appendChild(sessionScript);
+  }
+
   if (!document.getElementById('gsb-menu-music-js')) {
     const musicScript = document.createElement('script');
     musicScript.id = 'gsb-menu-music-js';
