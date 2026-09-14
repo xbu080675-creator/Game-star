@@ -1,5 +1,16 @@
 # Game Star Box Development Changelog
 
+## 0.4.10 / versionCode 23
+
+- 修复红魔等厂商 ROM 在关闭“允许 ADB 安装 / USB 安装”时被误报为 `Shizuku 不可用` 的问题。
+- PrivilegedInstallerService 现在识别 `INSTALL_FAILED_USER_RESTRICTED`、`install is disabled`、`adb install disabled` 等 Package Manager 输出，并返回独立错误码 `GSB-PRIV-INSTALL-PACKAGE-DENIED-ADB-POLICY`。
+- Shizuku Adapter 将该错误直接解释为：Shizuku 已连接且授权正常，但 ROM 禁止 shell/ADB 安装 APK；提示到开发者选项开启允许 ADB 安装/USB 安装后重试。
+- 不再把 UserService 返回的明确错误统一包装成 `GSB-PRIV-INSTALL-TRANSACTION-FAILED`，上层可以区分 Shizuku 生命周期问题与 ROM 安装策略问题。
+- Shizuku Binder 初次等待窗口由约 1.6 秒放宽到 5 秒，并增加“正在等待 Shizuku Binder”状态，减少瞬时初始化误判。
+- 安装成功后由 UserService 通过固定 `am start -S -W -n com.xbu.esportscenter/.MainActivity` 动作重新拉起竞界；命令、包名与 Activity 均不可由 UI/WebView/网络输入控制。
+- 自动重启失败不会把已成功安装的更新误判为安装失败；界面会提示手动重新打开竞界。
+- 继续保持原有官方来源、SHA-256、包名、versionCode、固定签名校验以及特权接口白名单，不扩大 Shizuku 权限面。
+
 ## 0.4.9 / versionCode 22
 
 - 修复启动动画与 `fairy_boot.ogg` 音画不同步：移除原先 350 ms 强制启动视觉时间轴的抢跑路径。
