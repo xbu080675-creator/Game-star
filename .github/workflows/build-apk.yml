@@ -102,6 +102,22 @@ jobs:
             exit 1
           fi
 
+      - name: Guard backend privilege boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE='app/src/main/java/com/xbu/esportscenter/core'
+          RM='app/src/main/java/com/xbu/esportscenter/platform/redmagic'
+          test -d "$CORE" -a -d "$RM"
+          if grep -R -Eqi 'android\.content|android\.provider|rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime|/system/bin|/sys/' "$CORE"; then
+            echo 'Platform or privileged API leaked into Core' >&2
+            exit 1
+          fi
+          if grep -R -Eqi 'Settings\.(Global|Secure|System)\.put|rikka\.shizuku|ProcessBuilder|Runtime\.getRuntime' "$RM"; then
+            echo '0.4.11 REDMAGIC adapter must remain read-only and non-privileged' >&2
+            exit 1
+          fi
+
       - name: Build fixed-signed preview APK
         run: gradle :app:assembleRelease --stacktrace
 
@@ -147,7 +163,7 @@ jobs:
               "sha256": os.environ["SHA256"],
               "size": int(os.environ["SIZE"]),
               "publishedAt": os.environ["PUBLISHED_AT"],
-              "changelog": "0.4.10：完善 Shizuku 自更新诊断。若 ROM 禁止 ADB/shell 安装，将明确提示开启开发者选项中的允许 ADB 安装/USB 安装，而不再误报为 Shizuku 不可用；安装成功后由固定特权动作重新拉起竞界。Shizuku Binder 等待窗口同步放宽以减少瞬时误判。"
+              "changelog": "0.4.11：后端 Phase 1 启动。加入平台无关 Capability Registry 与 Game Session 状态机，并在红魔上启用只读竞技键/游戏场景状态监听。前端保持冻结；本版本不新增 Shizuku 权限、不写系统设置、不执行 shell。"
           }
           with open("latest.json", "w", encoding="utf-8") as f:
               json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -182,7 +198,6 @@ jobs:
                 [ -n "$AID" ] && gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/$AID"
               done
 
-            # APK first; latest.json switches only after the new APK exists.
             gh release upload preview "$APK_NAME"
             gh release upload preview latest.json --clobber
 
@@ -194,13 +209,13 @@ jobs:
 
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/$RID" \
               -f name="Game Star Box $VERSION_NAME Preview" \
-              -f body="固定 DEV 签名 OTA 预览版。0.4.10 增加 ADB 安装策略诊断与安装后自动重启；仅竞界自身可走受限 Shizuku 静默覆盖安装。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              -f body="固定 DEV 签名 OTA 预览版。0.4.11 启动后端 Phase 1：Core Session/Capability 地基 + REDMAGIC 只读入口状态监听；不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               -F prerelease=true \
               -f target_commitish="$GITHUB_SHA" >/dev/null
           else
             gh release create preview "$APK_NAME" latest.json \
               --verify-tag \
               --title "Game Star Box $VERSION_NAME Preview" \
-              --notes "固定 DEV 签名 OTA 预览版。0.4.10 增加 ADB 安装策略诊断与安装后自动重启；仅竞界自身可走受限 Shizuku 静默覆盖安装。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
+              --notes "固定 DEV 签名 OTA 预览版。0.4.11 启动后端 Phase 1：Core Session/Capability 地基 + REDMAGIC 只读入口状态监听；不扩大 Shizuku 权限面，不写系统设置。GitHub 是唯一版本真源；第三方音乐来源/许可见 THIRD_PARTY_NOTICES.md。" \
               --prerelease
           fi
