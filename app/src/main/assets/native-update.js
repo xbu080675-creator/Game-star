@@ -1,4 +1,59 @@
 (() => {
+  function initBootRuntime() {
+    if (!window.GSBBoot) return;
+
+    const bootEl = document.getElementById('boot');
+    const bootAudio = document.getElementById('bootAudio');
+    let stopped = false;
+    let polls = 0;
+
+    function playbackRateFor(state) {
+      const p = Math.max(0, Math.min(100, Number(state && state.overallProgress) || 0));
+      if (state && state.blockingReady) return 1.42;
+      if (p >= 88) return 1.24;
+      if (p >= 65) return 1.08;
+      if (p >= 50) return 0.96;
+      if (p >= 30) return 0.84;
+      return 0.72;
+    }
+
+    function applyBootState(state) {
+      if (!state || stopped) return;
+      const rate = playbackRateFor(state);
+      if (bootAudio) {
+        try {
+          bootAudio.defaultPlaybackRate = rate;
+          bootAudio.playbackRate = rate;
+        } catch (_) {}
+      }
+      document.documentElement.dataset.gsbBootPhase = state.phase || 'UNKNOWN';
+      document.documentElement.dataset.gsbBootProgress = String(state.overallProgress || 0);
+      if (bootEl && bootEl.classList.contains('done')) stopped = true;
+    }
+
+    function readBootState() {
+      try {
+        const raw = GSBBoot.state();
+        if (raw) applyBootState(JSON.parse(raw));
+      } catch (_) {}
+    }
+
+    window.onGSBBootState = applyBootState;
+
+    // First capture the native state before declaring the WebView ready. This preserves a
+    // real PRE-WEBVIEW snapshot; the next native snapshot then advances to BOOT_COMPLETE.
+    readBootState();
+    try { GSBBoot.webViewReady(); } catch (_) {}
+
+    const timer = setInterval(() => {
+      polls++;
+      readBootState();
+      if (stopped || polls >= 28) clearInterval(timer);
+    }, 180);
+  }
+
+  initBootRuntime();
+
   if (!document.getElementById('gsb-menu-music-js')) {
     const musicScript = document.createElement('script');
     musicScript.id = 'gsb-menu-music-js';
