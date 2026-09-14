@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="144dp"
+    android:height="144dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+
+    <!-- Same identity as the WebView boot animation: ring + star + detached diamond. -->
+    <path
+        android:pathData="M120,42 A78,78 0,1 1 119.9,42"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#F5F7FC"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M120,82 L128,105 L151,113 L128,121 L120,144 L112,121 L89,113 L112,105 Z"
+        android:fillColor="#FFFFFF" />
+
+    <path
+        android:pathData="M185,59 L203,77 L185,95 L167,77 Z"
+        android:fillColor="#05090F"
+        android:strokeColor="#B8CDFF"
+        android:strokeWidth="6"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:pathData="M72,159 C95,185 149,187 170,153"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#3387FF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round" />
+</vector>
