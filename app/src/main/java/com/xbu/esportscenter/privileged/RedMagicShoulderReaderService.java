@@ -246,10 +246,7 @@ public final class RedMagicShoulderReaderService extends IRedMagicShoulderReader
 
     private static boolean isTrustedSarName(String name) {
         if (name == null) return false;
-        String lower = name.toLowerCase(Locale.ROOT);
-        return lower.contains("nubia_tgk_aw_sar")
-                || lower.contains("sar0")
-                || lower.contains("sar1");
+        return name.toLowerCase(Locale.ROOT).contains("nubia_tgk_aw_sar");
     }
 
     private static String sanitizeName(String name) {
