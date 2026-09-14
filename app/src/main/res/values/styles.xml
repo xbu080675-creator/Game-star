@@ -12,4 +12,17 @@
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+    <!--
+      Launcher/starting-window theme. On Android 8-11 this preview is already the first
+      frame of Game Star Box instead of a vendor/default light window. Android 12+
+      overrides the same style name in values-v31 with the platform SplashScreen attrs.
+    -->
+    <style name="Theme.EsportsCenter.Starting" parent="Theme.EsportsCenter">
+        <item name="android:windowBackground">@drawable/gsb_boot_preview</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
 </resources>
