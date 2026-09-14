@@ -1,5 +1,17 @@
 # Game Star Box Development Changelog
 
+## 0.4.8 / versionCode 21
+
+- 接入 Shizuku 13.1.5，新增受限 `Privileged Adapter`，首个且唯一特权用途为 Game Star Box 自身 OTA 静默覆盖安装。
+- 新增 `IPrivilegedInstaller` 窄 AIDL，仅暴露固定自更新事务，不提供任意 shell、任意 APK 路径或通用命令执行入口。
+- 新增 Shizuku UserService：普通 OTA 层完成官方来源、SHA-256、包名、versionCode、固定签名校验后，APK 以固定大小 Binder chunk 传入 shell/root 进程。
+- UserService 在 `/data/local/tmp` 使用固定前缀重新暂存 APK，并再次校验文件长度与 SHA-256，通过后才执行固定 `/system/bin/pm install -r <staged-apk>`。
+- Shizuku 首次使用会请求一次明确授权；Shizuku 未运行、未授权、版本过旧、Binder/事务失败时安全回退 Android 系统安装器。
+- 未使用 Shizuku 路径时才请求“安装未知应用”权限；Shizuku 正常时不再弹 Android 系统安装确认界面。
+- 非 `com.xbu.esportscenter` 候选在普通 OTA 层和 Privileged Adapter 双重拒绝；versionCode 必须严格递增。
+- 新增 `[GSB-PRIV]` / `[GSB-INSTALL]` 日志前缀、安装超时、残留 staging 清理、事务取消以及 Privileged Surface CI Guard。
+- 新增特权模块 README，记录权限白名单、信任边界、威胁模型、错误码、测试矩阵、降级与 ROM 兼容策略。
+
 ## 0.4.7 / versionCode 20
 
 - 重做原生 OTA 安装体验，保留 Native 层作为更新关键 UI，避免 WebView 状态异常影响安装流程。
