@@ -26,6 +26,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
@@ -33,11 +34,19 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private WebView webView;
     private AppUpdateManager updateManager;
+
     private FrameLayout updateOverlay;
+    private TextView updateEyebrow;
     private TextView updateTitle;
     private TextView updateStatus;
+    private TextView updateMeta;
+    private TextView updatePercent;
     private TextView updateDetail;
+    private TextView updateSafety;
+    private ProgressBar updateProgress;
+    private Button updateLater;
     private Button updateAction;
+    private boolean updatePermissionFlowPending;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -175,39 +184,104 @@ public class MainActivity extends Activity {
             );
         }
 
-        if (state.available || state.downloading || state.requiresInstallPermission || state.error != null) {
-            ensureUpdateOverlay();
-            updateOverlay.setVisibility(View.VISIBLE);
-            updateTitle.setText(state.downloading ? "正在更新" : "系统更新");
-            updateStatus.setText(state.status);
+        if (state.requiresInstallPermission) {
+            updatePermissionFlowPending = true;
+        }
 
-            StringBuilder detail = new StringBuilder();
-            if (!state.latestVersionName.isEmpty()) {
-                detail.append("GAME STAR BOX ").append(state.latestVersionName)
-                        .append("  ·  code ").append(state.latestVersionCode);
-            }
-            if (!state.sourceLabel.isEmpty()) detail.append("\n通道：").append(state.sourceLabel);
-            if (state.downloading && state.totalBytes > 0) {
-                detail.append("\n进度：").append(state.progressPercent).append("%  ·  ")
-                        .append(formatBytes(state.downloadedBytes)).append(" / ")
-                        .append(formatBytes(state.totalBytes));
-            }
-            if (!state.changelog.isEmpty()) detail.append("\n\n").append(state.changelog);
-            if (state.error != null) detail.append("\n\n错误：").append(state.error);
-            updateDetail.setText(detail.toString());
+        boolean shouldShow = state.available
+                || state.downloading
+                || state.requiresInstallPermission
+                || state.error != null;
 
-            if (state.downloading) {
-                updateAction.setEnabled(false);
-                updateAction.setText("下载中 " + state.progressPercent + "%");
-            } else if (state.requiresInstallPermission) {
-                updateAction.setEnabled(true);
-                updateAction.setText("允许安装更新");
-            } else {
-                updateAction.setEnabled(true);
-                updateAction.setText("下载并更新");
-            }
-        } else if (updateOverlay != null) {
-            updateOverlay.setVisibility(View.GONE);
+        if (!shouldShow) {
+            hideUpdateOverlay(false);
+            return;
+        }
+
+        ensureUpdateOverlay();
+        showUpdateOverlay();
+
+        updateEyebrow.setText(state.error == null
+                ? "GAME STAR BOX // SYSTEM UPDATE"
+                : "GAME STAR BOX // UPDATE RECOVERY");
+
+        if (!state.latestVersionName.isEmpty()) {
+            updateTitle.setText("版本 " + state.latestVersionName);
+        } else {
+            updateTitle.setText("系统更新");
+        }
+
+        updateStatus.setText(state.status);
+        updateStatus.setTextColor(state.error == null
+                ? Color.rgb(207, 229, 242)
+                : Color.rgb(255, 140, 147));
+
+        StringBuilder meta = new StringBuilder();
+        meta.append("当前 ").append(BuildConfig.VERSION_NAME);
+        if (!state.latestVersionName.isEmpty()) {
+            meta.append("  →  ").append(state.latestVersionName);
+        }
+        if (!state.sourceLabel.isEmpty()) {
+            meta.append("   ·   ").append(state.sourceLabel);
+        }
+        if (state.totalBytes > 0) {
+            meta.append("   ·   ").append(formatBytes(state.totalBytes));
+        }
+        updateMeta.setText(meta.toString());
+
+        int progress = Math.max(0, Math.min(100, state.progressPercent));
+        updateProgress.setProgress(progress);
+        updatePercent.setText(progress + "%");
+        updateProgress.setVisibility((state.downloading || progress > 0) ? View.VISIBLE : View.INVISIBLE);
+        updatePercent.setVisibility((state.downloading || progress > 0) ? View.VISIBLE : View.INVISIBLE);
+
+        StringBuilder detail = new StringBuilder();
+        if (state.downloading && state.totalBytes > 0) {
+            detail.append("已接收 ")
+                    .append(formatBytes(state.downloadedBytes))
+                    .append(" / ")
+                    .append(formatBytes(state.totalBytes));
+        }
+        if (!state.changelog.isEmpty()) {
+            if (detail.length() > 0) detail.append("\n\n");
+            detail.append("更新内容\n").append(state.changelog);
+        }
+        if (state.error != null) {
+            if (detail.length() > 0) detail.append("\n\n");
+            detail.append("错误\n").append(state.error);
+        }
+        updateDetail.setText(detail.toString());
+
+        updateSafety.setText(
+                "安装前强制校验   SHA-256  ·  包名  ·  versionCode  ·  固定签名\n" +
+                "更新包仅接受 Game Star Box 官方 Preview Release"
+        );
+
+        if (state.downloading) {
+            updateLater.setText("后台进行");
+            updateLater.setEnabled(true);
+            updateAction.setEnabled(false);
+            updateAction.setText(progress > 0 ? "下载中  " + progress + "%" : "准备更新…");
+        } else if (state.requiresInstallPermission) {
+            updateLater.setText("取消");
+            updateLater.setEnabled(true);
+            updateAction.setEnabled(true);
+            updateAction.setText("允许安装并继续");
+        } else if (state.error != null) {
+            updateLater.setText("关闭");
+            updateLater.setEnabled(true);
+            updateAction.setEnabled(state.available);
+            updateAction.setText(state.available ? "重新尝试" : "关闭");
+        } else if (progress >= 100) {
+            updateLater.setText("隐藏");
+            updateLater.setEnabled(true);
+            updateAction.setEnabled(false);
+            updateAction.setText("等待系统安装确认");
+        } else {
+            updateLater.setText("稍后");
+            updateLater.setEnabled(true);
+            updateAction.setEnabled(true);
+            updateAction.setText("下载并安装");
         }
     }
 
@@ -215,65 +289,133 @@ public class MainActivity extends Activity {
         if (updateOverlay != null) return;
 
         updateOverlay = new FrameLayout(this);
-        updateOverlay.setBackgroundColor(Color.argb(196, 0, 4, 8));
+        updateOverlay.setBackgroundColor(Color.argb(224, 2, 7, 11));
         updateOverlay.setClickable(true);
+        updateOverlay.setFocusable(true);
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(22), dp(20), dp(22), dp(18));
+        panel.setPadding(dp(28), dp(24), dp(28), dp(22));
+
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.rgb(12, 25, 34));
-        bg.setStroke(dp(1), Color.rgb(69, 94, 111));
-        bg.setCornerRadius(dp(10));
+        bg.setColor(Color.rgb(10, 22, 31));
+        bg.setStroke(dp(1), Color.rgb(70, 101, 121));
+        bg.setCornerRadius(dp(12));
         panel.setBackground(bg);
+        panel.setElevation(dp(18));
+
+        updateEyebrow = new TextView(this);
+        updateEyebrow.setTextColor(Color.rgb(107, 172, 207));
+        updateEyebrow.setTextSize(10f);
+        updateEyebrow.setLetterSpacing(0.16f);
+        updateEyebrow.setTypeface(null, android.graphics.Typeface.BOLD);
 
         updateTitle = new TextView(this);
         updateTitle.setTextColor(Color.WHITE);
-        updateTitle.setTextSize(20f);
+        updateTitle.setTextSize(34f);
         updateTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        updateTitle.setPadding(0, dp(6), 0, 0);
 
         updateStatus = new TextView(this);
-        updateStatus.setTextColor(Color.rgb(166, 206, 228));
-        updateStatus.setTextSize(13f);
-        updateStatus.setPadding(0, dp(8), 0, 0);
+        updateStatus.setTextColor(Color.rgb(207, 229, 242));
+        updateStatus.setTextSize(14f);
+        updateStatus.setPadding(0, dp(7), 0, 0);
+
+        updateMeta = new TextView(this);
+        updateMeta.setTextColor(Color.rgb(117, 143, 160));
+        updateMeta.setTextSize(11f);
+        updateMeta.setPadding(0, dp(8), 0, 0);
+
+        LinearLayout progressRow = new LinearLayout(this);
+        progressRow.setOrientation(LinearLayout.HORIZONTAL);
+        progressRow.setGravity(Gravity.CENTER_VERTICAL);
+        progressRow.setPadding(0, dp(18), 0, 0);
+
+        updateProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        updateProgress.setMax(100);
+        updateProgress.setProgress(0);
+        updateProgress.setIndeterminate(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            updateProgress.getProgressDrawable().setTint(Color.rgb(119, 224, 255));
+        }
+
+        updatePercent = new TextView(this);
+        updatePercent.setText("0%");
+        updatePercent.setTextColor(Color.rgb(215, 242, 250));
+        updatePercent.setTextSize(12f);
+        updatePercent.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        updatePercent.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(
+                0, dp(5), 1f
+        );
+        LinearLayout.LayoutParams percentLp = new LinearLayout.LayoutParams(
+                dp(58), dp(28)
+        );
+        percentLp.setMargins(dp(14), 0, 0, 0);
+        progressRow.addView(updateProgress, progressLp);
+        progressRow.addView(updatePercent, percentLp);
 
         updateDetail = new TextView(this);
-        updateDetail.setTextColor(Color.rgb(151, 168, 179));
+        updateDetail.setTextColor(Color.rgb(157, 176, 188));
         updateDetail.setTextSize(12f);
-        updateDetail.setLineSpacing(0f, 1.15f);
-        updateDetail.setPadding(0, dp(12), 0, dp(16));
+        updateDetail.setLineSpacing(dp(2), 1.08f);
+        updateDetail.setPadding(0, dp(14), 0, 0);
+
+        updateSafety = new TextView(this);
+        updateSafety.setTextColor(Color.rgb(114, 171, 151));
+        updateSafety.setTextSize(10f);
+        updateSafety.setLineSpacing(dp(1), 1.05f);
+        updateSafety.setPadding(0, dp(14), 0, dp(18));
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setGravity(Gravity.END);
+        actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
 
-        Button later = new Button(this);
-        later.setText("稍后");
-        later.setTextColor(Color.rgb(197, 211, 220));
-        later.setTextSize(12f);
-        later.setAllCaps(false);
-        later.setBackgroundColor(Color.TRANSPARENT);
-        later.setOnClickListener(v -> updateOverlay.setVisibility(View.GONE));
+        updateLater = new Button(this);
+        updateLater.setText("稍后");
+        updateLater.setTextColor(Color.rgb(194, 209, 218));
+        updateLater.setTextSize(12f);
+        updateLater.setAllCaps(false);
+        updateLater.setMinWidth(0);
+        updateLater.setMinHeight(0);
+        GradientDrawable laterBg = new GradientDrawable();
+        laterBg.setColor(Color.rgb(17, 34, 45));
+        laterBg.setStroke(dp(1), Color.rgb(55, 78, 93));
+        laterBg.setCornerRadius(dp(6));
+        updateLater.setBackground(laterBg);
+        updateLater.setOnClickListener(v -> {
+            emitHaptic("tick");
+            hideUpdateOverlay(true);
+        });
 
         updateAction = new Button(this);
-        updateAction.setText("下载并更新");
+        updateAction.setText("下载并安装");
         updateAction.setTextColor(Color.rgb(5, 16, 22));
         updateAction.setTextSize(12f);
+        updateAction.setTypeface(null, android.graphics.Typeface.BOLD);
         updateAction.setAllCaps(false);
+        updateAction.setMinWidth(0);
+        updateAction.setMinHeight(0);
         GradientDrawable actionBg = new GradientDrawable();
         actionBg.setColor(Color.rgb(225, 246, 255));
-        actionBg.setCornerRadius(dp(5));
+        actionBg.setCornerRadius(dp(6));
         updateAction.setBackground(actionBg);
         updateAction.setOnClickListener(v -> {
+            emitHaptic("click");
             if (updateManager != null) updateManager.downloadAndInstall();
         });
 
-        LinearLayout.LayoutParams laterLp = new LinearLayout.LayoutParams(dp(90), dp(42));
-        LinearLayout.LayoutParams actionLp = new LinearLayout.LayoutParams(dp(150), dp(42));
+        LinearLayout.LayoutParams laterLp = new LinearLayout.LayoutParams(dp(112), dp(42));
+        LinearLayout.LayoutParams actionLp = new LinearLayout.LayoutParams(dp(190), dp(42));
         actionLp.setMargins(dp(10), 0, 0, 0);
-        actions.addView(later, laterLp);
+        actions.addView(updateLater, laterLp);
         actions.addView(updateAction, actionLp);
 
+        panel.addView(updateEyebrow, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
         panel.addView(updateTitle, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -282,18 +424,35 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         ));
+        panel.addView(updateMeta, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        panel.addView(progressRow, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
         panel.addView(updateDetail, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                0,
                 1f
+        ));
+        panel.addView(updateSafety, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
         ));
         panel.addView(actions, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         ));
 
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        int panelWidth = Math.min(dp(760), Math.max(dp(520), screenWidth - dp(92)));
+        int panelHeight = Math.min(dp(500), Math.max(dp(360), screenHeight - dp(70)));
+
         FrameLayout.LayoutParams panelLp = new FrameLayout.LayoutParams(
-                dp(560), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER
+                panelWidth, panelHeight, Gravity.CENTER
         );
         updateOverlay.addView(panel, panelLp);
         root.addView(updateOverlay, new FrameLayout.LayoutParams(
@@ -301,6 +460,34 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT
         ));
         updateOverlay.setVisibility(View.GONE);
+    }
+
+    private void showUpdateOverlay() {
+        if (updateOverlay == null) return;
+        if (updateOverlay.getVisibility() == View.VISIBLE) return;
+        updateOverlay.setAlpha(0f);
+        updateOverlay.setVisibility(View.VISIBLE);
+        updateOverlay.animate().alpha(1f).setDuration(170L).start();
+    }
+
+    private void hideUpdateOverlay(boolean animated) {
+        if (updateOverlay == null || updateOverlay.getVisibility() != View.VISIBLE) return;
+        if (!animated) {
+            updateOverlay.animate().cancel();
+            updateOverlay.setAlpha(1f);
+            updateOverlay.setVisibility(View.GONE);
+            return;
+        }
+        updateOverlay.animate()
+                .alpha(0f)
+                .setDuration(140L)
+                .withEndAction(() -> {
+                    if (updateOverlay != null) {
+                        updateOverlay.setVisibility(View.GONE);
+                        updateOverlay.setAlpha(1f);
+                    }
+                })
+                .start();
     }
 
     private int dp(int value) {
@@ -433,6 +620,18 @@ public class MainActivity extends Activity {
         super.onResume();
         hideSystemBars();
         if (webView != null) webView.onResume();
+
+        if (updatePermissionFlowPending) {
+            boolean allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                    || getPackageManager().canRequestPackageInstalls();
+            updatePermissionFlowPending = false;
+            if (allowed && updateManager != null) {
+                new Handler(Looper.getMainLooper()).postDelayed(
+                        updateManager::downloadAndInstall,
+                        180L
+                );
+            }
+        }
     }
 
     @Override
@@ -457,7 +656,7 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (updateOverlay != null && updateOverlay.getVisibility() == View.VISIBLE) {
-            updateOverlay.setVisibility(View.GONE);
+            hideUpdateOverlay(true);
         } else if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
