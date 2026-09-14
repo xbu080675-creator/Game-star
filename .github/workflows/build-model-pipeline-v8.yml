@@ -27,7 +27,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Use runner Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 35 SDK
         shell: bash
         run: |
           set -euo pipefail
