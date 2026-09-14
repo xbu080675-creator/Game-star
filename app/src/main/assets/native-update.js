@@ -39,9 +39,6 @@
     }
 
     window.onGSBBootState = applyBootState;
-
-    // First capture the native state before declaring the WebView ready. This preserves a
-    // real PRE-WEBVIEW snapshot; the next native snapshot then advances to BOOT_COMPLETE.
     readBootState();
     try { GSBBoot.webViewReady(); } catch (_) {}
 
@@ -53,6 +50,13 @@
   }
 
   initBootRuntime();
+
+  if (!document.getElementById('gsb-game-library-js')) {
+    const gameScript = document.createElement('script');
+    gameScript.id = 'gsb-game-library-js';
+    gameScript.src = 'game-library.js';
+    document.head.appendChild(gameScript);
+  }
 
   if (!document.getElementById('gsb-menu-music-js')) {
     const musicScript = document.createElement('script');
