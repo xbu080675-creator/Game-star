@@ -24,7 +24,7 @@ Privileged Adapter 仅允许：
 
 1. 以固定 `/system/bin/getevent -pl` 枚举 Linux input 设备；
 2. 只接受设备节点格式 `/dev/input/eventN`；
-3. 设备名称必须匹配 REDMAGIC/Nubia 肩键 SAR 证据：`nubia_tgk_aw_sar`、`sar0` 或 `sar1`；
+3. 设备名称必须包含经公开取证确认的 REDMAGIC/Nubia 肩键 SAR 标识 `nubia_tgk_aw_sar`（允许其厂商后缀，但不接受泛化的 `sar0/sar1` 名称）；
 4. 对已经通过上述验证的节点，以固定 `/system/bin/getevent -ql <validated-node>` 进行只读监听；
 5. 只解析 `EV_KEY` 中的 `KEY_F7` / scan code `0x41` 和 `KEY_F8` / scan code `0x42`；
 6. 只向普通进程输出：`LEFT DOWN/UP`、`RIGHT DOWN/UP` 和有限状态码。
