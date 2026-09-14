@@ -1,5 +1,15 @@
 # Game Star Box Development Changelog
 
+## 0.4.11 / versionCode 24
+
+- 后端正式进入 Phase 1：新增平台无关 `CapabilityRegistry` 与 `GameSessionManager`，Core 不引用 Android/厂商/Shizuku/shell API。
+- 建立 Game Session 语义状态机：`IDLE -> PREPARING -> LAUNCHING -> RUNNING -> SUSPENDED -> ENDED -> IDLE`，非法状态转换返回稳定 Core 错误。
+- 新增 `RedMagicEntryMonitor`，只读观察 `gcs_need_kill_game_launcher`、`nubia_game_scene`、`nubia_game_mode`，用于验证红魔竞技键/游戏场景状态入口。
+- 新增进程级 `GameStarBoxApplication` 后端引导，应用启动即初始化 Core 与红魔只读 Adapter，并使用 `[GSB-CORE]` / `[GSB-RM]` 稳定日志前缀。
+- 本版本不写系统 Settings、不新增 Shizuku capability、不执行 shell、不接管竞技键、不修改红魔调度，现有特权白名单仍仅允许 Game Star Box 自更新。
+- 新增 `docs/backend/README.md`，归档模块职责、输入输出、安全边界、错误码、状态机、0.4.11 实机测试重点与后续 REDMAGIC Entry 接管门槛。
+- 前端视觉、启动动画、菜单音乐与 OTA 交互保持冻结；本版本用于验证后端地基与红魔状态读取是否稳定。
+
 ## 0.4.10 / versionCode 23
 
 - 修复红魔等厂商 ROM 在关闭“允许 ADB 安装 / USB 安装”时被误报为 `Shizuku 不可用` 的问题。
