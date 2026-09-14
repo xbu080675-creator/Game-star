@@ -4,10 +4,14 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- Android 11+ package visibility for read-only REDMAGIC capability auditing. -->
+    <!-- Android 11+ package visibility: REDMAGIC audit plus user-visible launcher entries only. -->
     <queries>
         <package android:name="cn.nubia.gamelauncher" />
         <package android:name="cn.nubia.gameassist" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application
