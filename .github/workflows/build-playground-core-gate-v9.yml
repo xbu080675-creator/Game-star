@@ -1,0 +1,119 @@
+name: Build Hardware Playground Core Gate v9
+
+on:
+  push:
+    branches: [ feature/shoulder-ignition-boot ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GSB_DEV_KEYSTORE_B64: ${{ secrets.GSB_DEV_KEYSTORE_B64 }}
+      GSB_DEV_STORE_PASSWORD: ${{ secrets.GSB_DEV_STORE_PASSWORD }}
+      GSB_DEV_KEY_PASSWORD: ${{ secrets.GSB_DEV_KEY_PASSWORD }}
+      GSB_DEV_KEY_ALIAS: ${{ secrets.GSB_DEV_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Use runner Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore fixed DEV signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GSB_DEV_KEYSTORE_B64"
+          test -n "$GSB_DEV_STORE_PASSWORD"
+          test -n "$GSB_DEV_KEY_PASSWORD"
+          test -n "$GSB_DEV_KEY_ALIAS"
+          printf '%s' "$GSB_DEV_KEYSTORE_B64" | tr -d '\r\n\t ' | base64 -d > "$RUNNER_TEMP/gsb-dev.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/gsb-dev.keystore" -storepass "$GSB_DEV_STORE_PASSWORD" -alias "$GSB_DEV_KEY_ALIAS" >/dev/null
+          echo "GSB_DEV_KEYSTORE=$RUNNER_TEMP/gsb-dev.keystore" >> "$GITHUB_ENV"
+
+      - name: Fetch fixed CC0 menu music
+        shell: bash
+        run: |
+          set -euo pipefail
+          MUSIC_URL='https://opengameart.org/sites/default/files/spacelifeNo14.ogg'
+          MUSIC_SHA256='64ba0b12ee09c106bca11531010534df282f3474a88fb1923d55b3de469898d4'
+          MUSIC_OUT='app/src/main/assets/menu_bgm.ogg'
+          mkdir -p app/src/main/assets
+          curl -fL --retry 4 --retry-delay 2 --retry-all-errors "$MUSIC_URL" -o "$MUSIC_OUT"
+          echo "$MUSIC_SHA256  $MUSIC_OUT" | sha256sum -c -
+
+      - name: Guard Core playground gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          GATE='app/src/main/java/com/xbu/esportscenter/core/boot/IgnitionGate.java'
+          PROGRESS='app/src/main/java/com/xbu/esportscenter/core/boot/HardwarePlaygroundProgress.java'
+          SHOULDER='app/src/main/java/com/xbu/esportscenter/core/boot/ShoulderBootStateMachine.java'
+          BOOT='app/src/main/java/com/xbu/esportscenter/BootMainActivity.java'
+          PAGE='app/src/main/assets/shoulder-boot.html'
+          EVENT='app/src/main/java/com/xbu/esportscenter/core/playground/HardwarePhysicalEvent.java'
+          test -f "$GATE" -a -f "$PROGRESS" -a -f "$SHOULDER" -a -f "$EVENT"
+          grep -q 'hardwareReady && playgroundReady && provisioningReady' "$GATE"
+          grep -q 'SessionMode.FAST' "$GATE"
+          grep -q 'FINAL_GRIP' "$PROGRESS"
+          grep -q 'setFinalGripEnabled' "$SHOULDER"
+          grep -q 'freshBothRequired' "$SHOULDER"
+          grep -q 'stageComplete' "$BOOT"
+          grep -q "stageDone('THERMAL')" "$PAGE"
+          if grep -R -Eqi 'android\.|rikka\.shizuku|Settings\.|ProcessBuilder|Runtime\.getRuntime|/system/bin|/sys/' app/src/main/java/com/xbu/esportscenter/core; then
+            echo 'Platform API leaked into Core' >&2
+            exit 1
+          fi
+
+      - name: Validate model event contract
+        run: gradle :app:validateHardwareModelPack --stacktrace
+
+      - name: Run Core unit tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+
+      - name: Compile signed v9 APK
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Stage artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk out/Game-Star-Box-0.4.27-core-gate-v9.apk
+          unzip -l out/Game-Star-Box-0.4.27-core-gate-v9.apk | grep 'assets/hardware-model/model-manifest.json'
+          unzip -l out/Game-Star-Box-0.4.27-core-gate-v9.apk | grep 'assets/shoulder-boot.html'
+          sha256sum out/Game-Star-Box-0.4.27-core-gate-v9.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game-Star-Box-0.4.27-core-gate-v9
+          path: out/Game-Star-Box-0.4.27-core-gate-v9.apk
+          if-no-files-found: error
+          retention-days: 3
