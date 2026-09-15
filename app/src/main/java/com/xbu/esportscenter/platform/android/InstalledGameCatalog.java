@@ -30,7 +30,10 @@ import java.util.Set;
  * launchables stay metadata-only until a future lazy icon API is introduced.
  */
 public final class InstalledGameCatalog {
-    private static final int ICON_SIZE = 96;
+    // Handheld HOME treats the launcher icon as the primary software tile artwork. 192px keeps the
+    // enlarged tile crisp while preserving the rule that only immediately visible auto-games are
+    // rasterized during catalog prewarm.
+    private static final int ICON_SIZE = 192;
 
     private final Context appContext;
     private final PackageManager packageManager;
@@ -83,7 +86,7 @@ public final class InstalledGameCatalog {
             for (Entry entry : entries) {
                 allowList.add(entry.packageName);
                 // Generic launcher candidates deliberately omit icon payloads. Encoding dozens or
-                // hundreds of 128px PNGs synchronously caused severe WebView stalls on real devices.
+                // hundreds of PNGs synchronously caused severe WebView stalls on real devices.
                 launchables.put(entry.toJson(false));
                 if (entry.game) games.put(entry.toJson(true));
             }
