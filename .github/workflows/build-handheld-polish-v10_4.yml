@@ -1,0 +1,120 @@
+name: Build Handheld Polish v10.4
+
+on:
+  push:
+    branches: [ feature/shoulder-ignition-boot ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GSB_DEV_KEYSTORE_B64: ${{ secrets.GSB_DEV_KEYSTORE_B64 }}
+      GSB_DEV_STORE_PASSWORD: ${{ secrets.GSB_DEV_STORE_PASSWORD }}
+      GSB_DEV_KEY_PASSWORD: ${{ secrets.GSB_DEV_KEY_PASSWORD }}
+      GSB_DEV_KEY_ALIAS: ${{ secrets.GSB_DEV_KEY_ALIAS }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Use runner Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore fixed DEV signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GSB_DEV_KEYSTORE_B64"
+          test -n "$GSB_DEV_STORE_PASSWORD"
+          test -n "$GSB_DEV_KEY_PASSWORD"
+          test -n "$GSB_DEV_KEY_ALIAS"
+          printf '%s' "$GSB_DEV_KEYSTORE_B64" | tr -d '\r\n\t ' | base64 -d > "$RUNNER_TEMP/gsb-dev.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/gsb-dev.keystore" -storepass "$GSB_DEV_STORE_PASSWORD" -alias "$GSB_DEV_KEY_ALIAS" >/dev/null
+          echo "GSB_DEV_KEYSTORE=$RUNNER_TEMP/gsb-dev.keystore" >> "$GITHUB_ENV"
+      - name: Fetch fixed CC0 menu music
+        shell: bash
+        run: |
+          set -euo pipefail
+          MUSIC_URL='https://opengameart.org/sites/default/files/spacelifeNo14.ogg'
+          MUSIC_SHA256='64ba0b12ee09c106bca11531010534df282f3474a88fb1923d55b3de469898d4'
+          MUSIC_OUT='app/src/main/assets/menu_bgm.ogg'
+          mkdir -p app/src/main/assets
+          curl -fL --retry 4 --retry-delay 2 --retry-all-errors "$MUSIC_URL" -o "$MUSIC_OUT"
+          echo "$MUSIC_SHA256  $MUSIC_OUT" | sha256sum -c -
+      - name: Guard handheld v10.4 presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          CSS='app/src/main/assets/handheld-theme-polish-v10_3.css'
+          JS='app/src/main/assets/theme-runtime.js'
+          grep -q 'Handheld polish v10.4' "$CSS"
+          grep -q 'background-size:100% 100%,0 0,0 0!important' "$CSS"
+          grep -q '.hhDockBtn svg' "$CSS"
+          grep -q "button.innerHTML = icons\[icon\]" "$JS"
+          grep -q "应用图标直出" "$JS"
+          if grep -Eq "\['[▦◇▣⌁◎◐⚙◌]'" "$JS"; then
+            echo 'legacy Unicode dock glyph remains' >&2
+            exit 1
+          fi
+          node --check "$JS"
+      - name: Guard FAST and Thermal regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTML='app/src/main/assets/shoulder-boot.html'
+          grep -q "if(fast&&s.phase!=='ARMED'&&s.phase!=='IGNITING')return" "$HTML"
+          grep -q 'setPointerCapture' "$HTML"
+          grep -q 'airflowWork' "$HTML"
+          ! grep -q 'fanDegrees>660' "$HTML"
+      - name: Guard Core playground gate regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          GATE='app/src/main/java/com/xbu/esportscenter/core/boot/IgnitionGate.java'
+          SHOULDER='app/src/main/java/com/xbu/esportscenter/core/boot/ShoulderBootStateMachine.java'
+          grep -q 'hardwareReady && playgroundReady && provisioningReady' "$GATE"
+          grep -q 'startFastArmed' "$SHOULDER"
+          grep -q 'freshBothRequired' "$SHOULDER"
+      - name: Validate model event contract
+        run: gradle :app:validateHardwareModelPack --stacktrace
+      - name: Run Core unit tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+      - name: Compile signed Handheld polish APK
+        run: gradle :app:assembleRelease --stacktrace
+      - name: Stage artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          APK='out/Game-Star-Box-0.4.27-handheld-polish-v10.4.apk'
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          unzip -p "$APK" assets/handheld-theme-polish-v10_3.css | grep -q 'Handheld polish v10.4'
+          unzip -p "$APK" assets/theme-runtime.js | grep -q 'button.innerHTML = icons\[icon\]'
+          sha256sum "$APK"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game-Star-Box-0.4.27-handheld-polish-v10.4
+          path: out/Game-Star-Box-0.4.27-handheld-polish-v10.4.apk
+          if-no-files-found: error
+          retention-days: 3
