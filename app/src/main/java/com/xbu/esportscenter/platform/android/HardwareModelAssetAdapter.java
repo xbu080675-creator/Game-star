@@ -9,6 +9,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.xbu.esportscenter.core.playground.HardwarePhysicalEvent;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -16,17 +18,20 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Typed asset adapter for Hardware Playground v8 model-render outputs.
+ * Typed asset adapter for Hardware Playground model-render outputs.
  *
  * The presentation continues to request stable logical v7 asset URLs. When a complete, validated
  * high-render pack is present and explicitly marked productionReady, this adapter substitutes the
  * packaged raster render output at the WebView resource boundary. Any incomplete or invalid pack
  * fails closed to the existing v7 prototype assets; mixed visual packs are never allowed.
  *
- * This adapter does not render models, does not invoke a DCC tool, and does not download assets.
+ * The model manifest also carries the scene contract for HardwarePhysicalEvent. Event vocabulary is
+ * owned by Core; this Android adapter validates that the DCC/render contract matches it exactly.
  */
 public final class HardwareModelAssetAdapter extends WebViewClient {
     private static final String TAG = "[GSB-MODEL]";
@@ -80,8 +85,6 @@ public final class HardwareModelAssetAdapter extends WebViewClient {
             InputStream stream = assets.open(entry.renderPath, AssetManager.ACCESS_STREAMING);
             return new WebResourceResponse(entry.mimeType, null, stream);
         } catch (Throwable t) {
-            // Validation happens atomically during construction. A later read failure is still
-            // treated as fail-closed for this request so WebView can load the original v7 URL.
             Log.e(TAG, "GSB-MODEL-ASSET-READ-FAILED logical=" + logicalPath, t);
             return null;
         }
@@ -93,6 +96,10 @@ public final class HardwareModelAssetAdapter extends WebViewClient {
             JSONObject root = new JSONObject(json);
             if (root.optInt("schemaVersion", -1) != SUPPORTED_SCHEMA) {
                 Log.e(TAG, "GSB-MODEL-MANIFEST-SCHEMA-UNSUPPORTED");
+                return LoadResult.fallback();
+            }
+            if (!validatePhysicalEventContract(root)) {
+                Log.e(TAG, "GSB-MODEL-PHYSICAL-EVENT-CONTRACT-INVALID");
                 return LoadResult.fallback();
             }
 
@@ -122,10 +129,8 @@ public final class HardwareModelAssetAdapter extends WebViewClient {
                     Log.e(TAG, "GSB-MODEL-PRODUCTION-VECTOR-FORBIDDEN path=" + renderPath);
                     return LoadResult.fallback();
                 }
-                // Atomic validation: every required render output must exist before any substitution
-                // is enabled. This prevents half-model / half-prototype presentation states.
                 try (InputStream ignored = assets.open(renderPath, AssetManager.ACCESS_STREAMING)) {
-                    // existence check only
+                    // Atomic existence check only.
                 }
                 candidate.put(logicalRequest, new RenderEntry(renderPath, mimeType));
             }
@@ -135,6 +140,48 @@ public final class HardwareModelAssetAdapter extends WebViewClient {
             Log.e(TAG, "GSB-MODEL-MANIFEST-READ-FAILED", t);
             return LoadResult.fallback();
         }
+    }
+
+    private boolean validatePhysicalEventContract(JSONObject root) {
+        JSONObject shots = root.optJSONObject("shotContract");
+        if (shots == null || shots.optInt("version", -1) < 2) return false;
+        JSONArray supportedModes = shots.optJSONArray("supportedModes");
+        JSONArray requiredIds = shots.optJSONArray("requiredEventIds");
+        JSONArray events = shots.optJSONArray("events");
+        if (supportedModes == null || requiredIds == null || events == null) return false;
+
+        Set<String> modes = new HashSet<>();
+        for (int i = 0; i < supportedModes.length(); i++) {
+            String mode = supportedModes.optString(i, "");
+            if (!mode.isEmpty()) modes.add(mode);
+        }
+
+        Set<String> expected = new HashSet<>();
+        for (HardwarePhysicalEvent event : HardwarePhysicalEvent.values()) {
+            expected.add(event.name());
+        }
+
+        Set<String> required = new HashSet<>();
+        for (int i = 0; i < requiredIds.length(); i++) {
+            String id = requiredIds.optString(i, "");
+            if (id.isEmpty() || !required.add(id)) return false;
+        }
+        if (!required.equals(expected)) return false;
+
+        Set<String> declared = new HashSet<>();
+        for (int i = 0; i < events.length(); i++) {
+            JSONObject item = events.optJSONObject(i);
+            if (item == null) return false;
+            String id = item.optString("id", "");
+            String preferredMode = item.optString("preferredMode", "");
+            String driver = item.optString("driver", "");
+            String sourceObject = item.optString("sourceObject", "");
+            if (!expected.contains(id) || !declared.add(id)) return false;
+            if (!modes.contains(preferredMode) || driver.isEmpty() || sourceObject.isEmpty()) {
+                return false;
+            }
+        }
+        return declared.equals(expected);
     }
 
     private LoadResult failIncomplete(String detail) {
