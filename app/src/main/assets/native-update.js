@@ -91,8 +91,10 @@
     // Everything the user should see immediately after ignition is hydrated while the hardware
     // test is still on screen. Menu music remains post-ignition so it cannot fight the boot sound.
     injectStylesheetOnce('gsb-scroll-runtime-css', 'scroll-runtime.css');
+    injectStylesheetOnce('gsb-handheld-theme-css', 'handheld-theme.css');
     await injectScript('gsb-gesture-runtime-js', 'gesture-runtime.js');
     await injectScript('gsb-game-library-js', 'game-library.js');
+    await injectScript('gsb-theme-runtime-js', 'theme-runtime.js');
     await injectScript('gsb-session-runtime-js', 'session-runtime.js');
     await injectScript('gsb-quick-menu-runtime-js', 'quick-menu-runtime.js');
     await twoFrames();
