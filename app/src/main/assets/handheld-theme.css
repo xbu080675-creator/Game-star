@@ -161,6 +161,15 @@
   display:grid;place-items:center;position:relative;font-size:15px;
   box-shadow:none;transition:.13s ease;
 }
+/* One restrained system-glyph language: no filled blobs, no mixed icon weights. */
+.hhDockBtn svg{
+  width:21px;height:21px;display:block;overflow:visible;
+  fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+}
+.hhDockBtn svg circle,.hhDockBtn svg rect,.hhDockBtn svg path{
+  fill:none;stroke:currentColor;
+}
 .hhDockBtn:after{
   content:attr(data-label);position:absolute;left:50%;top:52px;transform:translateX(-50%);
   font-size:6px;white-space:nowrap;color:#706c67;opacity:0;pointer-events:none;
@@ -252,6 +261,7 @@
   :root[data-gsb-theme="handheld"] .gameCard.active{flex-basis:clamp(112px,17.3vw,164px);width:clamp(112px,17.3vw,164px)}
   :root[data-gsb-theme="handheld"] .hhDock{min-height:50px;padding:3px 8px;gap:10px}
   .hhDockBtn{width:40px;height:40px;font-size:13px}
+  .hhDockBtn svg{width:19px;height:19px}
   .hhDockBtn:after{top:45px}
   .hhSelectedTitle{top:4px}
 }
