@@ -35,7 +35,7 @@ For v10 testing, when no previous v10 selection exists the runtime defaults to `
 
 Top:
 
-- Game Star Box user identity/avatar treatment.
+- Compact Game Star Box identity.
 - Local clock.
 - Existing connectivity/display status.
 - Explicit theme switch.
@@ -68,7 +68,7 @@ Handheld HOME:
 - Left/Right on software row: existing game-card selection.
 - Down: enter system dock.
 - Left/Right in dock: move dock focus.
-- Up: return to software row.
+- Up: return to software row; when already on the software row, Up is intentionally consumed rather than invoking the legacy vertical scene cycle.
 - A/Enter: activate current software/dock item.
 - B/Escape from secondary scenes: return HOME.
 - Brand tap from a secondary handheld scene: return HOME.
@@ -85,6 +85,8 @@ Assets:
 Hydration:
 
 `native-update.js` injects `handheld-theme.css` and `theme-runtime.js` during hidden first-surface prewarm, before `mainSurfaceReady()`. Therefore the user should not see the console layout flash and then reflow after ignition.
+
+Handheld-only HOME chrome is scoped to `.homeScene`; selected-game title and bottom dock are explicitly hidden when Library, Esports or System is active.
 
 The theme runtime is presentation-only. It does not query packages, alter REDMAGIC settings, control cooling, capture screenshots, suspend the device, or widen any privileged bridge.
 
@@ -124,7 +126,34 @@ Acceptance:
 7. Screenshot/Sleep do not execute invented platform behavior.
 8. Theme preference persists across WebView reloads.
 9. Hidden hydration loads theme CSS/runtime before `mainSurfaceReady()`.
-10. Hardware Playground / REDMAGIC shoulder / haptic / model pipelines remain untouched.
+10. Handheld HOME title/dock do not leak into secondary scenes.
+11. Hardware Playground / REDMAGIC shoulder / haptic / model pipelines remain untouched.
+
+## Release Validation
+
+Temporary CI workflow was used only for feature validation and deleted after the successful artifact was retrieved.
+
+Final successful run:
+
+- run: `34933146540`
+- build head: `d0b8c4154c6ea862f7d9e8c883efbb5561776fef`
+- artifact id: `10382054044`
+- artifact ZIP digest: `sha256:8b4f6b888627155ff52f1baeb500a0a039bfa80ba40d496d35c5a24e63e4cc6e`
+- APK SHA-256: `e5b9b6046a36cae989604b27cc247cafd65e65883ba6dc4a4dec7411bf39c0ca`
+
+PASS:
+
+- Handheld theme contract guard.
+- JavaScript syntax checks for `theme-runtime.js` and `native-update.js`.
+- No prohibited proprietary game identity in theme runtime.
+- Theme runtime remains presentation-only.
+- v9 Core Playground Gate regression guard.
+- Hardware model Physical Event contract validation.
+- Core JUnit tests.
+- Android API 35 / JDK17 / Gradle 8.9 signed release compile.
+- APK staging and artifact upload.
+- Packaged APK contains `assets/handheld-theme.css`, `assets/theme-runtime.js`, `assets/native-update.js` and the model manifest.
+- Packaged hydration script references both Handheld assets.
 
 ## Design Research Record
 
@@ -142,3 +171,5 @@ Nintendo's public Switch 2 HOME support documentation describes a shallow HOME h
 - Added handheld key-navigation semantics.
 - Kept unsupported screenshot/sleep operations informational only.
 - Loaded theme during hidden first-surface hydration.
+- Scoped Handheld HOME chrome so it cannot leak across secondary scenes.
+- Added CI syntax, architecture, Physical Event and release-package guards.
