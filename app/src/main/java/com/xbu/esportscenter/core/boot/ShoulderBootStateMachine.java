@@ -4,8 +4,10 @@ package com.xbu.esportscenter.core.boot;
  * Platform-neutral first-boot hardware-awakening state machine.
  *
  * Core owns only semantic shoulder input and hold timing. Android/REDMAGIC adapters translate
- * physical input. Finishing the L+R ritual only ARMS the device; platform code must explicitly
- * release ignition after first-boot provisioning is ready.
+ * physical input. Completing left/right calibration enters BOTH_HOLD, but the final L+R ignition
+ * grip is disabled until the ordered Hardware Playground reaches FINAL_GRIP. Enabling the final
+ * grip requires a fresh release-and-press if either shoulder was already held, so early input can
+ * never pre-arm ignition.
  */
 public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink {
     public enum Side { LEFT, RIGHT }
@@ -33,6 +35,8 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
         public final int level;
         public final boolean leftCalibrated;
         public final boolean rightCalibrated;
+        public final boolean finalGripEnabled;
+        public final boolean freshBothRequired;
 
         Snapshot(
                 Phase phase,
@@ -41,7 +45,9 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                 int progress,
                 int level,
                 boolean leftCalibrated,
-                boolean rightCalibrated
+                boolean rightCalibrated,
+                boolean finalGripEnabled,
+                boolean freshBothRequired
         ) {
             this.phase = phase;
             this.leftDown = leftDown;
@@ -50,6 +56,8 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
             this.level = level;
             this.leftCalibrated = leftCalibrated;
             this.rightCalibrated = rightCalibrated;
+            this.finalGripEnabled = finalGripEnabled;
+            this.freshBothRequired = freshBothRequired;
         }
     }
 
@@ -58,6 +66,8 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
     private boolean rightDown;
     private boolean leftCalibrated;
     private boolean rightCalibrated;
+    private boolean finalGripEnabled;
+    private boolean freshBothRequired;
     private long leftDownAt;
     private long rightDownAt;
     private long bothDownAt;
@@ -133,12 +143,7 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                 }
                 break;
             case BOTH_HOLD:
-                if (leftDown && rightDown) {
-                    if (bothDownAt == 0L) bothDownAt = nowMs;
-                } else {
-                    bothDownAt = 0L;
-                    resetProgressLocked();
-                }
+                updateFinalGripInputLocked(nowMs);
                 break;
             default:
                 break;
@@ -155,6 +160,14 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                 updateSingleHoldLocked(rightDown, rightDownAt, nowMs, CALIBRATION_HOLD_MS);
                 break;
             case BOTH_HOLD:
+                if (!finalGripEnabled || freshBothRequired) {
+                    if (freshBothRequired && !leftDown && !rightDown) {
+                        freshBothRequired = false;
+                    }
+                    resetProgressLocked();
+                    bothDownAt = 0L;
+                    break;
+                }
                 if (leftDown && rightDown) {
                     if (bothDownAt == 0L) bothDownAt = nowMs;
                     updateProgressLocked(nowMs - bothDownAt, IGNITION_HOLD_MS);
@@ -177,6 +190,22 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
     }
 
     /**
+     * Enables the final ignition grip only after Core playground progression reaches FINAL_GRIP.
+     * If either shoulder is already held, both must be released before a new hold may count.
+     */
+    public synchronized Snapshot setFinalGripEnabled(boolean enabled) {
+        if (phase == Phase.COMPLETE || phase == Phase.IGNITING || phase == Phase.ARMED) {
+            return snapshotLocked();
+        }
+        if (enabled == finalGripEnabled) return snapshotLocked();
+        finalGripEnabled = enabled;
+        bothDownAt = 0L;
+        resetProgressLocked();
+        freshBothRequired = enabled && (leftDown || rightDown);
+        return snapshotLocked();
+    }
+
+    /**
      * Lifecycle-safe cancel: dropping the Activity must never count as a successful release.
      * ARMED is latched because the user already completed the physical ritual.
      */
@@ -186,16 +215,19 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
         leftDownAt = 0L;
         rightDownAt = 0L;
         bothDownAt = 0L;
+        freshBothRequired = false;
         if (phase != Phase.ARMED && phase != Phase.IGNITING && phase != Phase.COMPLETE) {
             resetProgressLocked();
         }
         return snapshotLocked();
     }
 
-    /** Subsequent boots skip calibration but still wait at ARMED for the runtime ignition gate. */
+    /** Subsequent boots explicitly bypass the interactive playground and wait at ARMED. */
     public synchronized Snapshot startFastArmed() {
         leftCalibrated = true;
         rightCalibrated = true;
+        finalGripEnabled = true;
+        freshBothRequired = false;
         leftDown = false;
         rightDown = false;
         progress = 100;
@@ -219,8 +251,30 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
         rightDown = false;
         progress = 100;
         level = 0;
+        finalGripEnabled = false;
+        freshBothRequired = false;
         ShoulderBootInputHub.detach(this);
         return snapshotLocked();
+    }
+
+    private void updateFinalGripInputLocked(long nowMs) {
+        if (!finalGripEnabled) {
+            bothDownAt = 0L;
+            resetProgressLocked();
+            return;
+        }
+        if (freshBothRequired) {
+            if (!leftDown && !rightDown) freshBothRequired = false;
+            bothDownAt = 0L;
+            resetProgressLocked();
+            return;
+        }
+        if (leftDown && rightDown) {
+            if (bothDownAt == 0L) bothDownAt = nowMs;
+        } else {
+            bothDownAt = 0L;
+            resetProgressLocked();
+        }
     }
 
     private void updateSingleHoldLocked(boolean down, long downAt, long nowMs, long targetMs) {
@@ -257,7 +311,9 @@ public final class ShoulderBootStateMachine implements ShoulderBootInputHub.Sink
                 progress,
                 level,
                 leftCalibrated,
-                rightCalibrated
+                rightCalibrated,
+                finalGripEnabled,
+                freshBothRequired
         );
     }
 }
