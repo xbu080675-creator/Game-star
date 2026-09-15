@@ -34,6 +34,8 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
             "hardware_playground_model_pipeline_migration_0427_v8";
     private static final String PREF_CORE_GATE_MIGRATION_DONE =
             "hardware_playground_core_gate_migration_0427_v9";
+    private static final String PREF_THERMAL_ROTOR_FIX_MIGRATION_DONE =
+            "hardware_playground_thermal_rotor_fix_migration_0427_v10_1";
 
     private RedMagicShoulderPrivilegedAdapter adapter;
     private Application.ActivityLifecycleCallbacks callbacks;
@@ -51,6 +53,7 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
         forceOneAssetRebuiltHardwarePlayground(application);
         forceOneModelPipelineHardwarePlayground(application);
         forceOneCoreGatedHardwarePlayground(application);
+        forceOneThermalRotorValidation(application);
         adapter = new RedMagicShoulderPrivilegedAdapter(application);
         callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
@@ -182,6 +185,20 @@ public final class RedMagicShoulderBootstrapProvider extends ContentProvider {
                 .putBoolean(PREF_CORE_GATE_MIGRATION_DONE, true)
                 .apply();
         Log.i(TAG, "one-time hardware playground core-gate migration applied");
+    }
+
+    /**
+     * v10.1 replaces the Thermal raw-degree drag gate with captured pointer input plus inertial
+     * rotor/airflow physics. Reset once so install-over validation always reaches the fixed stage.
+     */
+    private static void forceOneThermalRotorValidation(Application application) {
+        SharedPreferences prefs = application.getSharedPreferences(PREFS_BOOT, Application.MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_THERMAL_ROTOR_FIX_MIGRATION_DONE, false)) return;
+        prefs.edit()
+                .putBoolean(PREF_SHOULDER_CALIBRATED, false)
+                .putBoolean(PREF_THERMAL_ROTOR_FIX_MIGRATION_DONE, true)
+                .apply();
+        Log.i(TAG, "one-time thermal rotor validation migration applied");
     }
 
     private static boolean isBootActivity(Activity activity) {
