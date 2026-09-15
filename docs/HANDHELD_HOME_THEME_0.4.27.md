@@ -1,0 +1,175 @@
+# Game Star Box 0.4.27 — Handheld Home Theme v10
+
+## Responsibility
+
+Add a second, handheld-first HOME presentation to Game Star Box without replacing the existing console-oriented theme or forking the game/session data layer.
+
+The new theme is informed by the interaction hierarchy of modern handheld HOME menus: user/status information stays shallow, installed software becomes the dominant horizontal rail, and system destinations move into a compact bottom dock. It does not bundle Nintendo logos, Nintendo artwork, proprietary icons, screenshots, fonts, or copied assets.
+
+## Inputs
+
+- Existing `InstalledGameCatalog` / `GSBGames` catalog.
+- Existing game card DOM rendered by `game-library.js`.
+- Existing `GameSession` state.
+- Pointer/touch, keyboard/gamepad-style key events and current WebView runtime.
+- Theme selection stored locally in WebView localStorage.
+
+## Outputs
+
+Two persistent UI themes:
+
+- `console`: existing Game Star Box large-screen console layout.
+- `handheld`: square software rail + status-first top chrome + circular system dock.
+
+Theme selection is exposed by `window.GSBTheme` and persisted under `gsb.ui.theme.v10`.
+
+## State Model
+
+`console <-> handheld`
+
+Theme changes do not mutate game/session state and do not restart the Activity.
+
+For v10 testing, when no previous v10 selection exists the runtime defaults to `handheld`, so install-over testers immediately see the new direction. Once the user chooses a theme, the preference is persistent.
+
+## Handheld HOME Information Architecture
+
+Top:
+
+- Compact Game Star Box identity.
+- Local clock.
+- Existing connectivity/display status.
+- Explicit theme switch.
+
+Center:
+
+- Installed games as large square software icons.
+- One focused item at a time.
+- Focused game title shown independently from the tile.
+- The same real app icon and launch bridge used by the existing catalog.
+- A/Enter launches the selected item; touch on an unfocused tile focuses it, a second touch launches it.
+
+Bottom system dock:
+
+- Game Library
+- Esports
+- Screenshot guidance
+- Controllers
+- Game Console / Quick Menu
+- Theme
+- System
+- Sleep guidance
+
+Screenshot and sleep are deliberately not faked as native controls. Until typed Android adapters exist, they only explain that the action remains owned by Android/REDMAGIC.
+
+## Navigation
+
+Handheld HOME:
+
+- Left/Right on software row: existing game-card selection.
+- Down: enter system dock.
+- Left/Right in dock: move dock focus.
+- Up: return to software row; when already on the software row, Up is intentionally consumed rather than invoking the legacy vertical scene cycle.
+- A/Enter: activate current software/dock item.
+- B/Escape from secondary scenes: return HOME.
+- Brand tap from a secondary handheld scene: return HOME.
+
+Console theme keeps the existing navigation model unchanged.
+
+## Platform Implementation
+
+Assets:
+
+- `app/src/main/assets/handheld-theme.css`
+- `app/src/main/assets/theme-runtime.js`
+
+Hydration:
+
+`native-update.js` injects `handheld-theme.css` and `theme-runtime.js` during hidden first-surface prewarm, before `mainSurfaceReady()`. Therefore the user should not see the console layout flash and then reflow after ignition.
+
+Handheld-only HOME chrome is scoped to `.homeScene`; selected-game title and bottom dock are explicitly hidden when Library, Esports or System is active.
+
+The theme runtime is presentation-only. It does not query packages, alter REDMAGIC settings, control cooling, capture screenshots, suspend the device, or widen any privileged bridge.
+
+## Safety / Product Honesty
+
+- No Nintendo trademarks are presented as Game Star Box identity.
+- No Nintendo UI assets are bundled.
+- No screenshot function is claimed without a native adapter.
+- No sleep/power function is claimed without a native adapter.
+- Existing typed Core/Adapter boundaries remain unchanged.
+- Theme selection never affects the Hardware Playground ignition gate.
+
+## Performance
+
+- No new network fetches.
+- No new bitmap bundle for the theme.
+- Installed app icons are reused from the existing game catalog.
+- CSS layout changes are applied while the main WebView is hidden during first-boot hydration.
+- Secondary scenes reuse the existing DOM instead of maintaining a second full application tree.
+
+## Logs / Error Codes
+
+Theme runtime currently has no native log dependency. Failures are fail-soft presentation failures: the console DOM remains present and usable.
+
+Future native theme persistence, if added, should use `[GSB-THEME]` and typed error codes rather than a generic bridge.
+
+## Testing
+
+Acceptance:
+
+1. Fresh v10 theme preference opens Handheld HOME.
+2. Theme button switches Handheld <-> Console without Activity restart.
+3. Selection survives only as presentation state; installed-game/session sources remain authoritative.
+4. Real installed app icons remain visible in Handheld tiles.
+5. A/Enter launches selected games through the existing `GSBGames.launch` path.
+6. Dock routes Library / Esports / Console / System correctly.
+7. Screenshot/Sleep do not execute invented platform behavior.
+8. Theme preference persists across WebView reloads.
+9. Hidden hydration loads theme CSS/runtime before `mainSurfaceReady()`.
+10. Handheld HOME title/dock do not leak into secondary scenes.
+11. Hardware Playground / REDMAGIC shoulder / haptic / model pipelines remain untouched.
+
+## Release Validation
+
+Temporary CI workflow was used only for feature validation and deleted after the successful artifact was retrieved.
+
+Final successful run:
+
+- run: `34933146540`
+- build head: `d0b8c4154c6ea862f7d9e8c883efbb5561776fef`
+- artifact id: `10382054044`
+- artifact ZIP digest: `sha256:8b4f6b888627155ff52f1baeb500a0a039bfa80ba40d496d35c5a24e63e4cc6e`
+- APK SHA-256: `e5b9b6046a36cae989604b27cc247cafd65e65883ba6dc4a4dec7411bf39c0ca`
+
+PASS:
+
+- Handheld theme contract guard.
+- JavaScript syntax checks for `theme-runtime.js` and `native-update.js`.
+- No prohibited proprietary game identity in theme runtime.
+- Theme runtime remains presentation-only.
+- v9 Core Playground Gate regression guard.
+- Hardware model Physical Event contract validation.
+- Core JUnit tests.
+- Android API 35 / JDK17 / Gradle 8.9 signed release compile.
+- APK staging and artifact upload.
+- Packaged APK contains `assets/handheld-theme.css`, `assets/theme-runtime.js`, `assets/native-update.js` and the model manifest.
+- Packaged hydration script references both Handheld assets.
+
+## Design Research Record
+
+Public Nintendo Switch 2 HOME documentation was used only to understand the broader handheld information-design pattern: shallow user/status chrome, a dominant software row, and system destinations placed in a low, quickly reachable function band. Game Star Box maps that general pattern to its own product functions and visual identity rather than presenting itself as a Nintendo UI clone.
+
+## Changelog
+
+### v10
+
+- Added persistent `console` / `handheld` theme runtime.
+- Added handheld square software rail.
+- Added selected-software title treatment and local clock.
+- Added compact circular system dock.
+- Added explicit theme switch in top status, system settings and handheld dock.
+- Added handheld key-navigation semantics.
+- Kept unsupported screenshot/sleep operations informational only.
+- Loaded theme during hidden first-surface hydration.
+- Scoped Handheld HOME chrome so it cannot leak across secondary scenes.
+- Added CI syntax, architecture, Physical Event and release-package guards.

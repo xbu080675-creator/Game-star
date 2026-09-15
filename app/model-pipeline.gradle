@@ -1,0 +1,114 @@
+import groovy.json.JsonSlurper
+
+// Build-time validation for the Hardware Playground high-render model pack.
+// The Android runtime repeats the critical checks because APK contents are the final authority.
+tasks.register('validateHardwareModelPack') {
+    group = 'verification'
+    description = 'Validates the high-render model manifest, physical-event contract and atomic fallback rules.'
+
+    doLast {
+        File assetRoot = file('src/main/assets')
+        File manifestFile = new File(assetRoot, 'hardware-model/model-manifest.json')
+        if (!manifestFile.isFile()) {
+            throw new GradleException('GSB-MODEL-MANIFEST-MISSING')
+        }
+
+        def manifest = new JsonSlurper().parse(manifestFile)
+        if (manifest.schemaVersion != 1) {
+            throw new GradleException('GSB-MODEL-MANIFEST-SCHEMA-UNSUPPORTED')
+        }
+        if (!(manifest.assets instanceof List) || manifest.assets.size() != 8) {
+            throw new GradleException('GSB-MODEL-MANIFEST-ASSET-COUNT-INVALID')
+        }
+
+        Set<String> ids = new LinkedHashSet<>()
+        boolean productionReady = manifest.pack?.productionReady == true
+        manifest.assets.each { item ->
+            String id = item.id ?: ''
+            String logical = item.logicalRequest ?: ''
+            String render = item.renderPath ?: ''
+            String mime = item.mimeType ?: ''
+            if (!id || !ids.add(id)) {
+                throw new GradleException('GSB-MODEL-MANIFEST-ID-INVALID')
+            }
+            if (!logical.startsWith('hardware-v7/') || !logical.endsWith('.svg')) {
+                throw new GradleException("GSB-MODEL-LOGICAL-ASSET-INVALID:${id}")
+            }
+            File fallback = new File(assetRoot, logical)
+            if (!fallback.isFile()) {
+                throw new GradleException("GSB-MODEL-FALLBACK-MISSING:${id}")
+            }
+            if (!render.startsWith('hardware-model/render-v8/')) {
+                throw new GradleException("GSB-MODEL-RENDER-PATH-INVALID:${id}")
+            }
+            if (render.endsWith('.svg') || render.contains('hardware-v7/')) {
+                throw new GradleException("GSB-MODEL-PRODUCTION-VECTOR-FORBIDDEN:${id}")
+            }
+            if (!(mime in ['image/webp', 'image/png', 'image/avif'])) {
+                throw new GradleException("GSB-MODEL-MIME-INVALID:${id}")
+            }
+            if (productionReady && item.required != false) {
+                File output = new File(assetRoot, render)
+                if (!output.isFile() || output.length() <= 0L) {
+                    throw new GradleException("GSB-MODEL-PACK-INCOMPLETE:${id}")
+                }
+            }
+        }
+
+        def shots = manifest.shotContract
+        if (shots?.version != 2) {
+            throw new GradleException('GSB-MODEL-SHOT-CONTRACT-VERSION-INVALID')
+        }
+        Set<String> expectedEvents = [
+                'SHOULDER_LEFT_FOCUS',
+                'SHOULDER_RIGHT_FOCUS',
+                'MOTION_TILT',
+                'GLASS_REVEAL',
+                'DETENT_STEP',
+                'RATCHET_TOOTH',
+                'LATCH_RELEASE',
+                'THERMAL_SPINUP',
+                'IGNITION'
+        ] as LinkedHashSet<String>
+        Set<String> supportedModes = new LinkedHashSet<>(shots.supportedModes ?: [])
+        Set<String> requiredEvents = new LinkedHashSet<>(shots.requiredEventIds ?: [])
+        if (requiredEvents != expectedEvents) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-REQUIRED-SET-INVALID')
+        }
+        if (!(shots.events instanceof List) || shots.events.size() != expectedEvents.size()) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-COUNT-INVALID')
+        }
+        Set<String> declaredEvents = new LinkedHashSet<>()
+        shots.events.each { event ->
+            String id = event.id ?: ''
+            String mode = event.preferredMode ?: ''
+            String driver = event.driver ?: ''
+            String sourceObject = event.sourceObject ?: ''
+            if (!expectedEvents.contains(id) || !declaredEvents.add(id)) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-ID-INVALID:${id}")
+            }
+            if (!supportedModes.contains(mode)) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-MODE-INVALID:${id}")
+            }
+            if (!driver || !sourceObject) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-BINDING-INCOMPLETE:${id}")
+            }
+        }
+        if (declaredEvents != expectedEvents) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-DECLARED-SET-INVALID')
+        }
+
+        if (!productionReady) {
+            logger.lifecycle('[GSB-MODEL] production render pack intentionally disabled; v7 fallback remains authoritative')
+        } else {
+            logger.lifecycle('[GSB-MODEL] production render pack validated: ' + ids.join(', '))
+        }
+        logger.lifecycle('[GSB-MODEL] physical event scene contract validated: ' + declaredEvents.join(', '))
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name == 'preBuild' }.configureEach {
+        dependsOn tasks.named('validateHardwareModelPack')
+    }
+}

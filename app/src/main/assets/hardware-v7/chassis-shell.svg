@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760">
+<defs>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4b4e52"/><stop offset=".18" stop-color="#15171a"/><stop offset=".52" stop-color="#070809"/><stop offset=".82" stop-color="#23262a"/><stop offset="1" stop-color="#666a70"/></linearGradient>
+  <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a9adb2"/><stop offset=".15" stop-color="#2b2e32"/><stop offset=".7" stop-color="#08090b"/><stop offset="1" stop-color="#3b3e42"/></linearGradient>
+  <linearGradient id="glass" x1=".15" y1="0" x2=".85" y2="1"><stop stop-color="#0f1317" stop-opacity=".98"/><stop offset=".45" stop-color="#020304"/><stop offset="1" stop-color="#11161a"/></linearGradient>
+  <linearGradient id="spec" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".44" stop-color="#fff" stop-opacity=".15"/><stop offset=".55" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <filter id="shadow"><feGaussianBlur stdDeviation="22"/></filter>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" seed="4" result="n"/><feColorMatrix in="n" type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .08"/></feComponentTransfer></filter>
+</defs>
+<ellipse cx="700" cy="665" rx="545" ry="46" fill="#000" opacity=".62" filter="url(#shadow)"/>
+<rect x="90" y="70" width="1220" height="590" rx="76" fill="url(#metal)" stroke="#81858a" stroke-width="2"/>
+<rect x="104" y="84" width="1192" height="562" rx="64" fill="none" stroke="url(#edge)" stroke-width="9"/>
+<rect x="135" y="115" width="1130" height="500" rx="42" fill="url(#glass)" stroke="#30363c" stroke-width="3"/>
+<path d="M158 134 H1100 C1160 134 1220 176 1242 229 L1248 270 C1130 210 960 171 716 156 C496 143 302 150 158 181Z" fill="url(#spec)" opacity=".7"/>
+<g opacity=".22" filter="url(#grain)"><rect x="90" y="70" width="1220" height="590" rx="76" fill="#fff"/></g>
+<g>
+ <rect x="185" y="52" width="255" height="38" rx="16" fill="url(#edge)" stroke="#8f9397"/>
+ <rect x="960" y="52" width="255" height="38" rx="16" fill="url(#edge)" stroke="#8f9397"/>
+ <rect x="202" y="62" width="220" height="4" rx="2" fill="#9aa0a5" opacity=".46"/>
+ <rect x="978" y="62" width="220" height="4" rx="2" fill="#9aa0a5" opacity=".46"/>
+</g>
+<g fill="#16191c" stroke="#5b6065">
+ <rect x="114" y="194" width="10" height="145" rx="5"/>
+ <rect x="1276" y="211" width="10" height="132" rx="5"/>
+</g>
+<g fill="#262a2e"><circle cx="1290" cy="383" r="7"/><circle cx="110" cy="380" r="5"/></g>
+</svg>

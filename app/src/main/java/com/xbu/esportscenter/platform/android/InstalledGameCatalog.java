@@ -21,19 +21,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Read-only Android launcher/game catalog.
  *
  * Performance rule: launcher discovery and launch validation must never rasterize every installed
- * application icon. Only auto-detected games receive an icon in the initial catalog; generic
- * launchables stay metadata-only until a future lazy icon API is introduced.
+ * application icon. Only auto-detected games receive an icon in the initial catalog. Manually
+ * selected launcher apps may request their own real launcher icon lazily through iconDataUrl().
  */
 public final class InstalledGameCatalog {
-    private static final int ICON_SIZE = 96;
+    // Handheld HOME treats the launcher icon as the primary software tile artwork. 192px keeps the
+    // enlarged tile crisp while avoiding full-resolution drawable payloads in the WebView bridge.
+    private static final int ICON_SIZE = 192;
 
     private final Context appContext;
     private final PackageManager packageManager;
+    private final Map<String, String> iconCache = new ConcurrentHashMap<>();
     private volatile String cachedJson;
     private volatile Set<String> cachedLaunchablePackages;
 
@@ -56,6 +60,37 @@ public final class InstalledGameCatalog {
     public synchronized void invalidate() {
         cachedJson = null;
         cachedLaunchablePackages = null;
+        iconCache.clear();
+    }
+
+    /**
+     * Returns the package's actual Android launcher icon on demand.
+     *
+     * This is deliberately lazy: generic launcher discovery stays metadata-only so boot does not
+     * rasterize dozens or hundreds of application icons. Only software the user actually promotes
+     * into Game Star Box HOME pays the icon encoding cost.
+     */
+    public String iconDataUrl(String packageName) {
+        if (packageName == null || packageName.isBlank()) return "";
+        if (appContext.getPackageName().equals(packageName)) return "";
+
+        String cached = iconCache.get(packageName);
+        if (cached != null) return cached;
+        if (!isVisibleLauncherPackage(packageName)) return "";
+
+        try {
+            Intent launch = packageManager.getLaunchIntentForPackage(packageName);
+            if (launch == null) return "";
+            ResolveInfo info = packageManager.resolveActivity(launch, 0);
+            Drawable drawable = info == null
+                    ? packageManager.getApplicationIcon(packageName)
+                    : info.loadIcon(packageManager);
+            String encoded = encodeDrawable(drawable);
+            if (!encoded.isBlank()) iconCache.put(packageName, encoded);
+            return encoded;
+        } catch (Throwable ignored) {
+            return "";
+        }
     }
 
     public Intent createValidatedLaunchIntent(String packageName) {
@@ -83,9 +118,14 @@ public final class InstalledGameCatalog {
             for (Entry entry : entries) {
                 allowList.add(entry.packageName);
                 // Generic launcher candidates deliberately omit icon payloads. Encoding dozens or
-                // hundreds of 128px PNGs synchronously caused severe WebView stalls on real devices.
+                // hundreds of PNGs synchronously caused severe WebView stalls on real devices.
                 launchables.put(entry.toJson(false));
-                if (entry.game) games.put(entry.toJson(true));
+                if (entry.game) {
+                    games.put(entry.toJson(true));
+                    if (!entry.iconDataUrl.isBlank()) {
+                        iconCache.put(entry.packageName, entry.iconDataUrl);
+                    }
+                }
             }
             cachedLaunchablePackages = allowList;
             root.put("autoGames", games);
@@ -181,18 +221,31 @@ public final class InstalledGameCatalog {
 
     private String encodeIcon(ResolveInfo info) {
         try {
-            Drawable drawable = info.loadIcon(packageManager);
-            if (drawable == null) return "";
-            Bitmap bitmap = Bitmap.createBitmap(ICON_SIZE, ICON_SIZE, Bitmap.Config.ARGB_8888);
+            return encodeDrawable(info.loadIcon(packageManager));
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
+    private String encodeDrawable(Drawable drawable) {
+        if (drawable == null) return "";
+        Bitmap bitmap = null;
+        ByteArrayOutputStream out = null;
+        try {
+            bitmap = Bitmap.createBitmap(ICON_SIZE, ICON_SIZE, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             drawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE);
             drawable.draw(canvas);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.PNG, 82, out);
-            bitmap.recycle();
             return "data:image/png;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
         } catch (Throwable ignored) {
             return "";
+        } finally {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+            if (out != null) {
+                try { out.close(); } catch (Throwable ignored) { }
+            }
         }
     }
 

@@ -1,0 +1,267 @@
+/* Game Star Box handheld theme.
+ * Handheld is a separate information/presentation language, not a recolored Console HOME.
+ * v10.3 removes the blue-tech shell around software artwork: the Android launcher icon is the
+ * software identity, while the system contributes only focus, spacing and quiet neutral chrome.
+ */
+:root[data-gsb-theme="handheld"]{
+  --hh-bg:#f4f2ef;
+  --hh-surface:#fbfaf8;
+  --hh-surface2:#ebe7e2;
+  --hh-surface3:#e2ddd7;
+  --hh-text:#171717;
+  --hh-muted:#6b6966;
+  --hh-dim:#9b9792;
+  --hh-focus:#f16450;
+  --hh-focus-strong:#df4f3c;
+  --hh-focus-soft:rgba(241,100,80,.16);
+  --hh-line:rgba(29,27,25,.11);
+  --hh-shadow:0 10px 24px rgba(43,38,33,.10);
+}
+
+:root[data-gsb-theme="handheld"] body,
+:root[data-gsb-theme="handheld"] .shell{
+  background:var(--hh-bg);
+  color:var(--hh-text);
+}
+:root[data-gsb-theme="handheld"] .shell:after,
+:root[data-gsb-theme="handheld"] .gameBackdrop{display:none!important}
+
+/* Top chrome: identity and status only. The old circular mark felt like a generated dashboard icon. */
+:root[data-gsb-theme="handheld"] .topbar{
+  height:58px;
+  padding:0 30px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  background:var(--hh-bg);
+  border:0;
+  box-shadow:none;
+}
+:root[data-gsb-theme="handheld"] .brand{gap:0}
+:root[data-gsb-theme="handheld"] .brand .mark{display:none!important}
+:root[data-gsb-theme="handheld"] .brand b{
+  font-size:9px;letter-spacing:.16em;color:#23211f;font-weight:720
+}
+:root[data-gsb-theme="handheld"] .brand small{
+  font-size:6px;color:#8a8681;letter-spacing:.12em;margin-top:3px
+}
+:root[data-gsb-theme="handheld"] .tabs{display:none!important}
+:root[data-gsb-theme="handheld"] .status{grid-column:2;gap:13px;color:#34312e;font-size:9px}
+:root[data-gsb-theme="handheld"] .status .online{color:#34312e}
+:root[data-gsb-theme="handheld"] .statusDot{width:5px;height:5px;box-shadow:none;background:#43b980}
+.hhClock{font-size:9px;color:#292725;letter-spacing:.04em}
+
+.gsbThemeToggle{
+  height:28px;padding:0 10px;border-radius:15px;
+  border:1px solid rgba(198,224,243,.2);background:rgba(18,31,40,.75);
+  color:#dfe8ed;font-size:7px;letter-spacing:.08em;white-space:nowrap;
+}
+:root[data-gsb-theme="handheld"] .gsbThemeToggle{
+  border-color:rgba(35,31,28,.13);background:rgba(255,255,255,.72);color:#34312e;
+  box-shadow:none;
+}
+:root[data-gsb-theme="handheld"] .gsbThemeToggle:focus,
+:root[data-gsb-theme="handheld"] .gsbThemeToggle:hover{
+  border-color:var(--hh-focus);color:var(--hh-focus-strong)
+}
+
+:root[data-gsb-theme="handheld"] .stage{height:calc(100vh - 92px)}
+:root[data-gsb-theme="handheld"] .scene{padding:0 0 8px}
+:root[data-gsb-theme="handheld"] .scene:not(.homeScene){padding:8px 26px 14px}
+
+/* HOME: software identity is the actual Android launcher icon, not a generated cover treatment. */
+:root[data-gsb-theme="handheld"] .homeScene{
+  display:grid;
+  grid-template-rows:34px minmax(190px,1fr) 86px;
+  gap:0;
+  padding-top:4px;
+  overflow:hidden!important;
+  background:var(--hh-bg);
+}
+:root[data-gsb-theme="handheld"] .homeScene>.rows{display:none!important}
+:root[data-gsb-theme="handheld"] .heroWrap{
+  grid-row:2;overflow:visible;display:flex;align-items:center;
+  padding:0 0 0 6.3vw;
+}
+:root[data-gsb-theme="handheld"] .heroAura{display:none}
+:root[data-gsb-theme="handheld"] .carousel{
+  height:auto;align-items:center;gap:16px;overflow:visible;padding:0 5vw 0 0;
+}
+:root[data-gsb-theme="handheld"] .gameCard,
+:root[data-gsb-theme="handheld"] .gameCard.active{
+  flex:0 0 clamp(134px,18.1vw,214px);
+  width:clamp(134px,18.1vw,214px);
+  aspect-ratio:1/1;
+  border-radius:17px;
+  border:3px solid transparent;
+  background:transparent;
+  box-shadow:none;
+  filter:none;
+  transform:none;
+  overflow:visible;
+  padding:5px;
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+:root[data-gsb-theme="handheld"] .gameCard.active{
+  border-color:var(--hh-focus);
+  transform:translateY(-4px) scale(1.025);
+  box-shadow:0 0 0 3px var(--hh-focus-soft);
+}
+/* game-library.js already supplies the real launcher icon as layer 1. Handheld suppresses every
+ * synthetic gradient layer and lets the icon itself be the artwork. */
+:root[data-gsb-theme="handheld"] .gameCard .art{
+  inset:5px;
+  border-radius:13px;
+  overflow:hidden;
+  transform:none!important;
+  background-color:transparent!important;
+  background-size:92% auto,0 0,0 0!important;
+  background-position:center,center,center!important;
+  background-repeat:no-repeat!important;
+  filter:drop-shadow(0 7px 12px rgba(43,38,33,.10))!important;
+}
+:root[data-gsb-theme="handheld"] .gameCard.active .art{transform:none!important}
+:root[data-gsb-theme="handheld"] .gameCard .art:after{display:none}
+:root[data-gsb-theme="handheld"] .gameCard[data-package-name=""]{
+  border-color:rgba(46,42,38,.09);background:rgba(255,255,255,.42)
+}
+:root[data-gsb-theme="handheld"] .gameCard[data-package-name=""] .art{
+  background-image:none!important;
+  background-color:rgba(255,255,255,.58)!important;
+  filter:none!important;
+}
+:root[data-gsb-theme="handheld"] .gameCard[data-package-name=""] .art:before{
+  content:"＋";position:absolute;inset:0;display:grid;place-items:center;
+  color:#96918b;font-size:34px;font-weight:280;
+}
+:root[data-gsb-theme="handheld"] .gameCard .cardTop,
+:root[data-gsb-theme="handheld"] .gameCard .playBtn,
+:root[data-gsb-theme="handheld"] .gameCard .cardInfo{display:none!important}
+
+.hhSelectedTitle{
+  display:none;position:absolute;z-index:15;left:6.5vw;top:7px;
+  font-size:12px;font-weight:690;letter-spacing:.005em;color:var(--hh-text);
+}
+.hhSelectedTitle small{
+  display:inline-block;width:7px;height:7px;margin-right:8px;
+  color:transparent;font-size:0;border-radius:50%;background:var(--hh-focus);vertical-align:1px
+}
+:root[data-gsb-theme="handheld"] .hhSelectedTitle{display:block}
+.hhSelectedTitle[hidden],.hhDock[hidden]{display:none!important}
+
+.hhDock{display:none}
+:root[data-gsb-theme="handheld"] .hhDock{
+  grid-row:3;align-self:center;justify-self:center;
+  display:flex;align-items:center;gap:12px;
+  min-height:58px;padding:4px 8px;border-radius:0;
+  background:transparent;border:0;box-shadow:none;
+}
+.hhDockBtn{
+  width:46px;height:46px;border-radius:50%;border:1px solid rgba(40,36,32,.11);
+  background:rgba(255,255,255,.74);color:#68645f;
+  display:grid;place-items:center;position:relative;font-size:15px;
+  box-shadow:none;transition:.13s ease;
+}
+/* One restrained system-glyph language: no filled blobs, no mixed icon weights. */
+.hhDockBtn svg{
+  width:21px;height:21px;display:block;overflow:visible;
+  fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+}
+.hhDockBtn svg circle,.hhDockBtn svg rect,.hhDockBtn svg path{
+  fill:none;stroke:currentColor;
+}
+.hhDockBtn:after{
+  content:attr(data-label);position:absolute;left:50%;top:52px;transform:translateX(-50%);
+  font-size:6px;white-space:nowrap;color:#706c67;opacity:0;pointer-events:none;
+}
+.hhDockBtn:focus,.hhDockBtn.active,.hhDockBtn:hover{
+  color:#211f1d;background:#fff;border-color:var(--hh-focus);
+  box-shadow:0 0 0 3px var(--hh-focus-soft);
+}
+.hhDockBtn:focus:after,.hhDockBtn.active:after,.hhDockBtn:hover:after{opacity:1}
+.hhDockBtn.theme{color:var(--hh-focus-strong)}
+
+/* Secondary scenes: the same warm neutral system language, with app icons kept literal. */
+:root[data-gsb-theme="handheld"] .libraryScene,
+:root[data-gsb-theme="handheld"] .esportsScene,
+:root[data-gsb-theme="handheld"] .systemScene{
+  background:var(--hh-bg);color:var(--hh-text);
+}
+:root[data-gsb-theme="handheld"] .libraryScene{
+  grid-template-columns:150px minmax(0,1fr);gap:18px;
+}
+:root[data-gsb-theme="handheld"] .sideMenu{border-right-color:var(--hh-line)}
+:root[data-gsb-theme="handheld"] .sideMenu h3,
+:root[data-gsb-theme="handheld"] .libraryHead h2,
+:root[data-gsb-theme="handheld"] .rightPanel h3{color:var(--hh-text)}
+:root[data-gsb-theme="handheld"] .sideItem{color:#77736e}
+:root[data-gsb-theme="handheld"] .sideItem.active{
+  color:#201e1c;background:rgba(255,255,255,.72);border-left-color:var(--hh-focus);
+}
+:root[data-gsb-theme="handheld"] .search{
+  background:rgba(255,255,255,.78);border-color:var(--hh-line);color:#716d68;border-radius:14px;
+}
+:root[data-gsb-theme="handheld"] .coverGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+:root[data-gsb-theme="handheld"] .coverTile{
+  aspect-ratio:1;border-radius:15px;background-color:transparent!important;border:2px solid transparent;
+  background-size:90% auto,0 0!important;background-position:center!important;background-repeat:no-repeat!important;
+  box-shadow:none;color:var(--hh-text);filter:drop-shadow(0 5px 10px rgba(43,38,33,.08));
+}
+:root[data-gsb-theme="handheld"] .coverTile:hover{
+  border-color:var(--hh-focus);box-shadow:0 0 0 3px var(--hh-focus-soft);transform:translateY(-2px)
+}
+:root[data-gsb-theme="handheld"] .coverTile span{
+  background:rgba(244,242,239,.88);color:#4b4743;border-radius:8px;padding:3px 6px
+}
+:root[data-gsb-theme="handheld"] .featurePanel,
+:root[data-gsb-theme="handheld"] .rightPanel{
+  background:rgba(255,255,255,.76);border-color:var(--hh-line);border-radius:16px;color:var(--hh-text);
+  box-shadow:none;
+}
+:root[data-gsb-theme="handheld"] .featurePanel p,
+:root[data-gsb-theme="handheld"] .featurePanel .eyebrow,
+:root[data-gsb-theme="handheld"] .matchRow small,
+:root[data-gsb-theme="handheld"] .setting small{color:#77736e}
+:root[data-gsb-theme="handheld"] .matchRow,
+:root[data-gsb-theme="handheld"] .setting{border-bottom-color:var(--hh-line)}
+:root[data-gsb-theme="handheld"] .switch,
+:root[data-gsb-theme="handheld"] .qBtn{
+  border-radius:13px;background:#ebe7e2;border-color:#d7d1ca;color:#57534f;
+}
+:root[data-gsb-theme="handheld"] .switch.on,
+:root[data-gsb-theme="handheld"] .qBtn.on{
+  background:#fbe3dd;border-color:#ef998a;color:#8f3d31
+}
+
+:root[data-gsb-theme="handheld"] .footer{
+  height:34px;padding:0 26px;background:var(--hh-bg);border-top:0;color:#75716c;
+}
+:root[data-gsb-theme="handheld"] .key{color:#4e4a46}
+:root[data-gsb-theme="handheld"] .key em{
+  border:0;border-radius:50%;background:#302e2b;color:#fff;font-weight:800;
+  box-shadow:none;
+}
+:root[data-gsb-theme="handheld"] .hint{color:#9a9691}
+:root[data-gsb-theme="handheld"] .quickPanel{
+  background:#fbfaf8;border-left-color:var(--hh-line);border-radius:20px 0 0 20px;color:var(--hh-text);
+}
+
+.hhToast{
+  position:fixed;z-index:120;left:50%;bottom:48px;transform:translate(-50%,12px);
+  padding:9px 14px;border-radius:18px;background:rgba(39,36,33,.94);color:#fff;
+  border:1px solid rgba(255,255,255,.12);font-size:8px;opacity:0;pointer-events:none;transition:.18s ease;
+}
+.hhToast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-height:520px){
+  :root[data-gsb-theme="handheld"] .topbar{height:48px}
+  :root[data-gsb-theme="handheld"] .stage{height:calc(100vh - 80px)}
+  :root[data-gsb-theme="handheld"] .homeScene{grid-template-rows:25px minmax(156px,1fr) 68px}
+  :root[data-gsb-theme="handheld"] .gameCard,
+  :root[data-gsb-theme="handheld"] .gameCard.active{flex-basis:clamp(112px,17.3vw,164px);width:clamp(112px,17.3vw,164px)}
+  :root[data-gsb-theme="handheld"] .hhDock{min-height:50px;padding:3px 8px;gap:10px}
+  .hhDockBtn{width:40px;height:40px;font-size:13px}
+  .hhDockBtn svg{width:19px;height:19px}
+  .hhDockBtn:after{top:45px}
+  .hhSelectedTitle{top:4px}
+}
