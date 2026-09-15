@@ -157,7 +157,7 @@ PASS:
 
 ## Design Research Record
 
-Nintendo's public Switch 2 HOME support documentation describes a shallow HOME hierarchy with My Page at the upper-left and system destinations along the bottom, including online services, GameChat, News, eShop, Album, GameShare, Controllers, Virtual Game Cards, System Settings and Sleep Mode. Game Star Box uses that general handheld information-design lesson but maps the dock to its own functions and does not copy Nintendo assets.
+Public Nintendo Switch 2 HOME documentation was used only to understand the broader handheld information-design pattern: shallow user/status chrome, a dominant software row, and system destinations placed in a low, quickly reachable function band. Game Star Box maps that general pattern to its own product functions and visual identity rather than presenting itself as a Nintendo UI clone.
 
 ## Changelog
 
