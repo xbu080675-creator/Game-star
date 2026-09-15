@@ -67,7 +67,7 @@ jobs:
           set -euo pipefail
           HTML='app/src/main/assets/shoulder-boot.html'
           grep -q "Game Star Box Hardware Playground v10.2" "$HTML"
-          grep -q "if(fast&&s.phase!='ARMED'&&s.phase!='IGNITING')return" "$HTML"
+          grep -q "if(fast&&s.phase!=='ARMED'&&s.phase!=='IGNITING')return" "$HTML"
           grep -q "s.phase==='ARMED'&&play!=='ARMED'" "$HTML"
           grep -q "s.phase==='IGNITING'&&play!=='IGNITE'" "$HTML"
           if grep -q "if(fast)return" "$HTML"; then
@@ -114,7 +114,7 @@ jobs:
           APK='out/Game-Star-Box-0.4.27-fast-wake-fix-v10.2.apk'
           cp app/build/outputs/apk/release/app-release.apk "$APK"
           unzip -p "$APK" assets/shoulder-boot.html | grep -q "v10.2"
-          unzip -p "$APK" assets/shoulder-boot.html | grep -q "if(fast&&s.phase!='ARMED'&&s.phase!='IGNITING')return"
+          unzip -p "$APK" assets/shoulder-boot.html | grep -q "if(fast&&s.phase!=='ARMED'&&s.phase!=='IGNITING')return"
           sha256sum "$APK"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
