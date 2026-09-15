@@ -1,6 +1,6 @@
 /* Game Star Box handheld theme.
  * Design intent: console-grade restraint with a handheld-first information hierarchy.
- * No Nintendo logos, proprietary icons, artwork or trademarked layout assets are bundled here.
+ * Third-party console branding, artwork and proprietary UI assets are not bundled here.
  */
 :root[data-gsb-theme="handheld"]{
   --hh-bg:#1b1b1d;
@@ -20,7 +20,7 @@
 :root[data-gsb-theme="handheld"] .shell:after,
 :root[data-gsb-theme="handheld"] .gameBackdrop{display:none!important}
 
-/* Top chrome becomes status-only. */
+/* Top chrome is shallow and status-first. */
 :root[data-gsb-theme="handheld"] .topbar{
   height:58px;
   padding:0 28px;
@@ -42,6 +42,7 @@
 :root[data-gsb-theme="handheld"] .status{grid-column:2;gap:13px;color:#e2e2e4;font-size:9px}
 :root[data-gsb-theme="handheld"] .status .online{color:#e2e2e4}
 :root[data-gsb-theme="handheld"] .statusDot{width:5px;height:5px;box-shadow:none;background:#67db92}
+.hhClock{font-size:9px;color:#eeeef0;letter-spacing:.04em}
 
 .gsbThemeToggle{
   height:28px;padding:0 10px;border-radius:15px;
@@ -56,7 +57,7 @@
 :root[data-gsb-theme="handheld"] .scene{padding:0 0 8px}
 :root[data-gsb-theme="handheld"] .scene:not(.homeScene){padding:8px 26px 14px}
 
-/* HOME: selected title, square software rail, system dock. */
+/* HOME: selected title, square software rail, compact system dock. */
 :root[data-gsb-theme="handheld"] .homeScene{
   display:grid;
   grid-template-rows:34px minmax(190px,1fr) 86px;
@@ -109,20 +110,12 @@
 :root[data-gsb-theme="handheld"] .gameCard .cardInfo small{display:none}
 
 .hhSelectedTitle{
-  display:none;position:absolute;z-index:15;left:6.5vw;top:64px;
+  display:none;position:absolute;z-index:15;left:6.5vw;top:7px;
   font-size:12px;font-weight:650;letter-spacing:.01em;color:#f4f4f5;
 }
 .hhSelectedTitle small{margin-right:7px;color:var(--hh-blue);font-size:9px}
 :root[data-gsb-theme="handheld"] .hhSelectedTitle{display:block}
-
-.hhProfileStrip{display:none}
-:root[data-gsb-theme="handheld"] .hhProfileStrip{
-  display:flex;position:absolute;left:28px;right:28px;top:4px;height:30px;
-  align-items:center;justify-content:space-between;pointer-events:none;color:#a9aaad;font-size:7px;
-}
-.hhProfileStrip .hhUsers{display:flex;gap:6px;align-items:center}
-.hhAvatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#353538;border:1px solid #55565a;color:#fff;font-size:7px}
-.hhClock{font-size:9px;color:#eeeef0;letter-spacing:.04em}
+.hhSelectedTitle[hidden],.hhDock[hidden]{display:none!important}
 
 .hhDock{display:none}
 :root[data-gsb-theme="handheld"] .hhDock{
@@ -146,7 +139,7 @@
 .hhDockBtn:focus:after,.hhDockBtn.active:after,.hhDockBtn:hover:after{opacity:1}
 .hhDockBtn.theme{color:#62b7ff}
 
-/* Handheld variants of secondary scenes: flatter, less PC-dashboard-like. */
+/* Secondary scenes retain Game Star Box content but become flatter and less dashboard-like. */
 :root[data-gsb-theme="handheld"] .libraryScene{
   grid-template-columns:150px minmax(0,1fr);gap:18px;background:#1b1b1d;
 }
@@ -192,5 +185,5 @@
   :root[data-gsb-theme="handheld"] .gameCard.active{flex-basis:clamp(112px,18vw,170px);width:clamp(112px,18vw,170px)}
   :root[data-gsb-theme="handheld"] .hhDock{min-height:50px;padding:5px 10px}
   .hhDockBtn{width:38px;height:38px;font-size:13px}
-  .hhSelectedTitle{top:52px}
+  .hhSelectedTitle{top:4px}
 }
