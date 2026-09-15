@@ -92,6 +92,7 @@
     // test is still on screen. Menu music remains post-ignition so it cannot fight the boot sound.
     injectStylesheetOnce('gsb-scroll-runtime-css', 'scroll-runtime.css');
     injectStylesheetOnce('gsb-handheld-theme-css', 'handheld-theme.css');
+    injectStylesheetOnce('gsb-handheld-theme-polish-css', 'handheld-theme-polish-v10_3.css');
     await injectScript('gsb-gesture-runtime-js', 'gesture-runtime.js');
     await injectScript('gsb-game-library-js', 'game-library.js');
     await injectScript('gsb-theme-runtime-js', 'theme-runtime.js');
