@@ -100,21 +100,21 @@
   transform:translateY(-5px) scale(1.035);
   box-shadow:0 0 0 3px var(--hh-focus-soft),0 12px 25px rgba(31,35,40,.15);
 }
-/* The Android launcher icon is the software tile content. No synthetic game-art gradient in Handheld. */
+/* game-library.js provides: native icon, decorative radial layer, decorative gradient layer.
+ * Handheld keeps only layer 1 by sizing the synthetic layers to zero. */
 :root[data-gsb-theme="handheld"] .gameCard .art{
   inset:0;border-radius:9px;overflow:hidden;transform:none!important;
-  background-image:var(--gsb-app-icon,none)!important;
   background-color:#fff!important;
-  background-size:76% auto!important;
-  background-position:center!important;
+  background-size:76% auto,0 0,0 0!important;
+  background-position:center,center,center!important;
   background-repeat:no-repeat!important;
   filter:none!important;
 }
 :root[data-gsb-theme="handheld"] .gameCard.active .art{transform:none!important}
 :root[data-gsb-theme="handheld"] .gameCard .art:after{display:none}
 :root[data-gsb-theme="handheld"] .gameCard[data-package-name=""] .art{
-  background-image:none!important;
-  background:linear-gradient(145deg,#fff,#e9ecef)!important;
+  background-image:linear-gradient(145deg,#fff,#e9ecef)!important;
+  background-size:auto!important;
 }
 :root[data-gsb-theme="handheld"] .gameCard[data-package-name=""] .art:before{
   content:"＋";position:absolute;inset:0;display:grid;place-items:center;
@@ -178,7 +178,8 @@
 }
 :root[data-gsb-theme="handheld"] .coverGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 :root[data-gsb-theme="handheld"] .coverTile{
-  aspect-ratio:1;border-radius:12px;background:#fff!important;border-color:var(--hh-line);
+  aspect-ratio:1;border-radius:12px;background-color:#fff!important;border-color:var(--hh-line);
+  background-size:72% auto,0 0!important;background-position:center!important;background-repeat:no-repeat!important;
   box-shadow:0 4px 12px rgba(31,35,40,.08);color:var(--hh-text);
 }
 :root[data-gsb-theme="handheld"] .coverTile:hover{border-color:var(--hh-focus);transform:translateY(-2px)}
