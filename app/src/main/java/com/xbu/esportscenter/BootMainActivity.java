@@ -23,6 +23,7 @@ import com.xbu.esportscenter.core.boot.BootOrchestrator;
 import com.xbu.esportscenter.core.boot.BootPhase;
 import com.xbu.esportscenter.core.boot.BootSnapshot;
 import com.xbu.esportscenter.core.boot.FirstBootProvisioningCoordinator;
+import com.xbu.esportscenter.core.boot.HardwarePlaygroundProgress;
 import com.xbu.esportscenter.core.boot.IgnitionGate;
 import com.xbu.esportscenter.core.boot.ShoulderBootStateMachine;
 import com.xbu.esportscenter.core.capability.CapabilityRegistry;
@@ -48,6 +49,7 @@ import java.util.concurrent.Executors;
  */
 public final class BootMainActivity extends MainActivity {
     private static final String TAG_BOOT = "[GSB-BOOT]";
+    private static final String TAG_PLAYGROUND = "[GSB-PLAYGROUND]";
     private static final String PREFS_BOOT = "gsb.boot.profile";
     private static final String PREF_SHOULDER_CALIBRATED = "shoulder_calibrated_v1";
 
@@ -60,6 +62,7 @@ public final class BootMainActivity extends MainActivity {
     private boolean runtimeListenersAttached;
 
     private FirstBootProvisioningCoordinator provisioning;
+    private HardwarePlaygroundProgress playgroundProgress;
     private IgnitionGate ignitionGate;
     private ExecutorService firstBootExecutor;
 
@@ -136,8 +139,18 @@ public final class BootMainActivity extends MainActivity {
                 }
         );
 
+        shoulderBootFastMode = getSharedPreferences(PREFS_BOOT, MODE_PRIVATE)
+                .getBoolean(PREF_SHOULDER_CALIBRATED, false);
+        HardwarePlaygroundProgress.SessionMode playgroundMode = shoulderBootFastMode
+                ? HardwarePlaygroundProgress.SessionMode.FAST
+                : HardwarePlaygroundProgress.SessionMode.INTERACTIVE;
+        IgnitionGate.SessionMode ignitionMode = shoulderBootFastMode
+                ? IgnitionGate.SessionMode.FAST
+                : IgnitionGate.SessionMode.INTERACTIVE;
+
         provisioning = new FirstBootProvisioningCoordinator();
-        ignitionGate = new IgnitionGate();
+        playgroundProgress = new HardwarePlaygroundProgress(playgroundMode);
+        ignitionGate = new IgnitionGate(ignitionMode);
         firstBootExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "GSB-FirstBoot-Provisioning");
             thread.setDaemon(true);
@@ -165,15 +178,11 @@ public final class BootMainActivity extends MainActivity {
             bootWebView.setVisibility(View.INVISIBLE);
         }
 
-        // Runtime listeners are safe to attach before the surface is shown. Hidden hydration is the
-        // point of first boot: when ignition happens, Quick Menu/session state is already current.
         attachRuntimeListeners();
         startGameCatalogPrewarm();
 
         shoulderBoot = new ShoulderBootStateMachine();
         shoulderKeyAdapter = new AndroidShoulderKeyAdapter();
-        shoulderBootFastMode = getSharedPreferences(PREFS_BOOT, MODE_PRIVATE)
-                .getBoolean(PREF_SHOULDER_CALIBRATED, false);
         shoulderBootActive = true;
         shoulderBootGateOpen = false;
         installShoulderBootSurface();
@@ -267,9 +276,7 @@ public final class BootMainActivity extends MainActivity {
 
         shoulderBootView.addJavascriptInterface(new ShoulderBootBridge(), "GSBShoulderBoot");
         shoulderBootView.addJavascriptInterface(new HardwarePlaygroundBridge(), "GSBPlayground");
-        shoulderBootView.setWebViewClient(
-                modelAssets == null ? new WebViewClient() : modelAssets
-        );
+        shoulderBootView.setWebViewClient(modelAssets == null ? new WebViewClient() : modelAssets);
 
         addContentView(
                 shoulderBootView,
@@ -312,8 +319,6 @@ public final class BootMainActivity extends MainActivity {
                 Log.i(TAG_BOOT, "first-boot game catalog ready ms="
                         + (android.os.SystemClock.elapsedRealtime() - start));
             } catch (Throwable t) {
-                // InstalledGameCatalog already returns a safe error payload for normal failures.
-                // An unexpected failure is logged and does not widen into package/shell fallback.
                 Log.w(TAG_BOOT, "GSB-BOOT-GAME-CATALOG-PREWARM-FAILED", t);
             }
         });
@@ -427,6 +432,23 @@ public final class BootMainActivity extends MainActivity {
                 if (adapter != null) adapter.playSample(safe);
             });
         }
+
+        @JavascriptInterface
+        public String state() {
+            HardwarePlaygroundProgress current = playgroundProgress;
+            return current == null ? "{}" : toJson(current.snapshot());
+        }
+
+        @JavascriptInterface
+        public void stageComplete(String stageName) {
+            HardwarePlaygroundProgress.Stage stage = parsePlaygroundStage(stageName);
+            if (stage == null
+                    || stage == HardwarePlaygroundProgress.Stage.FINAL_GRIP
+                    || stage == HardwarePlaygroundProgress.Stage.COMPLETE) {
+                return;
+            }
+            runOnUiThread(() -> completePlaygroundStage(stage));
+        }
     }
 
     private final class ShoulderBootBridge {
@@ -441,6 +463,8 @@ public final class BootMainActivity extends MainActivity {
                 if (shoulderBoot != null) handleShoulderSnapshot(shoulderBoot.snapshot());
                 FirstBootProvisioningCoordinator current = provisioning;
                 if (current != null) dispatchProvisioningSnapshot(current.snapshot());
+                HardwarePlaygroundProgress progress = playgroundProgress;
+                if (progress != null) dispatchPlaygroundSnapshot(progress.snapshot());
             });
         }
 
@@ -479,6 +503,34 @@ public final class BootMainActivity extends MainActivity {
         return null;
     }
 
+    private static HardwarePlaygroundProgress.Stage parsePlaygroundStage(String value) {
+        if (value == null) return null;
+        try {
+            return HardwarePlaygroundProgress.Stage.valueOf(value.trim().toUpperCase());
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private void completePlaygroundStage(HardwarePlaygroundProgress.Stage completed) {
+        HardwarePlaygroundProgress progress = playgroundProgress;
+        if (progress == null || shoulderBootFastMode) return;
+        HardwarePlaygroundProgress.Snapshot before = progress.snapshot();
+        HardwarePlaygroundProgress.Snapshot after = progress.complete(completed);
+        if (after.stage == before.stage && after.completedStages == before.completedStages) {
+            Log.w(TAG_PLAYGROUND, "GSB-PLAYGROUND-STAGE-ORDER-REJECTED expected="
+                    + before.stage + " got=" + completed);
+            return;
+        }
+        Log.i(TAG_PLAYGROUND, "stage complete=" + completed + " next=" + after.stage);
+        if (after.finalGripEnabled && shoulderBoot != null) {
+            ShoulderBootStateMachine.Snapshot shoulder = shoulderBoot.setFinalGripEnabled(true);
+            dispatchShoulderSnapshot(shoulder);
+            applyBootHaptics(shoulder);
+        }
+        dispatchPlaygroundSnapshot(after);
+    }
+
     private void onShoulderInput(
             ShoulderBootStateMachine.Side side,
             boolean down,
@@ -500,9 +552,24 @@ public final class BootMainActivity extends MainActivity {
     private void handleShoulderSnapshot(ShoulderBootStateMachine.Snapshot snapshot) {
         dispatchShoulderSnapshot(snapshot);
         applyBootHaptics(snapshot);
-        if (snapshot != null && snapshot.phase == ShoulderBootStateMachine.Phase.ARMED) {
-            markHardwareSequenceReady();
+        if (snapshot == null || snapshot.phase != ShoulderBootStateMachine.Phase.ARMED) return;
+
+        if (!shoulderBootFastMode) {
+            HardwarePlaygroundProgress progress = playgroundProgress;
+            if (progress == null) return;
+            HardwarePlaygroundProgress.Snapshot before = progress.snapshot();
+            if (before.stage != HardwarePlaygroundProgress.Stage.FINAL_GRIP) {
+                Log.e(TAG_PLAYGROUND, "GSB-PLAYGROUND-ARMED-BEFORE-FINAL-GRIP stage=" + before.stage);
+                return;
+            }
+            HardwarePlaygroundProgress.Snapshot after =
+                    progress.complete(HardwarePlaygroundProgress.Stage.FINAL_GRIP);
+            IgnitionGate gate = ignitionGate;
+            if (gate != null) gate.setPlaygroundReady(after.complete);
+            dispatchPlaygroundSnapshot(after);
+            Log.i(TAG_PLAYGROUND, "final grip complete; playgroundReady=" + after.complete);
         }
+        markHardwareSequenceReady();
     }
 
     private void markHardwareSequenceReady() {
@@ -513,7 +580,7 @@ public final class BootMainActivity extends MainActivity {
         hardwareReadyLatched = true;
         IgnitionGate gate = ignitionGate;
         if (gate != null) gate.setHardwareReady(true);
-        Log.i(TAG_BOOT, "hardware awakening armed; waiting for first surface readiness");
+        Log.i(TAG_BOOT, "hardware awakening armed; waiting for playground/provisioning readiness");
         maybeReleaseIgnition();
     }
 
@@ -526,7 +593,10 @@ public final class BootMainActivity extends MainActivity {
         ShoulderBootStateMachine.Snapshot snapshot = shoulderBoot.releaseIgnition();
         dispatchShoulderSnapshot(snapshot);
         applyBootHaptics(snapshot);
-        Log.i(TAG_BOOT, "ignition released: hardwareReady=true provisioningReady=true");
+        Log.i(TAG_BOOT, "ignition released: hardwareReady=" + gate.hardwareReady
+                + " playgroundReady=" + gate.playgroundReady
+                + " provisioningReady=" + gate.provisioningReady
+                + " mode=" + gate.mode);
     }
 
     private void dispatchShoulderSnapshot(ShoulderBootStateMachine.Snapshot snapshot) {
@@ -550,6 +620,19 @@ public final class BootMainActivity extends MainActivity {
             if (shoulderBootView != null) {
                 shoulderBootView.evaluateJavascript(
                         "window.onGSBProvisioningState&&window.onGSBProvisioningState(" + json + ");",
+                        null
+                );
+            }
+        });
+    }
+
+    private void dispatchPlaygroundSnapshot(HardwarePlaygroundProgress.Snapshot snapshot) {
+        if (snapshot == null) return;
+        String json = toJson(snapshot);
+        runOnUiThread(() -> {
+            if (shoulderBootView != null) {
+                shoulderBootView.evaluateJavascript(
+                        "window.onGSBPlaygroundState&&window.onGSBPlaygroundState(" + json + ");",
                         null
                 );
             }
@@ -837,6 +920,19 @@ public final class BootMainActivity extends MainActivity {
         return root.toString();
     }
 
+    private static String toJson(HardwarePlaygroundProgress.Snapshot snapshot) {
+        JSONObject root = new JSONObject();
+        try {
+            root.put("mode", snapshot.mode.name());
+            root.put("stage", snapshot.stage.name());
+            root.put("completedStages", snapshot.completedStages);
+            root.put("finalGripEnabled", snapshot.finalGripEnabled);
+            root.put("complete", snapshot.complete);
+        } catch (Throwable ignored) {
+        }
+        return root.toString();
+    }
+
     private static String toJson(Map<String, CapabilityRegistry.Entry> snapshot) {
         JSONObject root = new JSONObject();
         try {
@@ -872,6 +968,8 @@ public final class BootMainActivity extends MainActivity {
             root.put("level", snapshot.level);
             root.put("leftCalibrated", snapshot.leftCalibrated);
             root.put("rightCalibrated", snapshot.rightCalibrated);
+            root.put("finalGripEnabled", snapshot.finalGripEnabled);
+            root.put("freshBothRequired", snapshot.freshBothRequired);
         } catch (Throwable ignored) {
         }
         return root.toString();
@@ -909,6 +1007,7 @@ public final class BootMainActivity extends MainActivity {
             provisioning.removeListener(provisioningListener);
             provisioning = null;
         }
+        playgroundProgress = null;
         ignitionGate = null;
         if (firstBootExecutor != null) {
             firstBootExecutor.shutdownNow();
