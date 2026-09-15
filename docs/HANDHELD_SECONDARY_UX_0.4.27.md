@@ -25,7 +25,7 @@ Bring secondary Handheld surfaces into the same presentation and navigation lang
 - Picker uses warm neutral Handheld materials rather than the legacy dark Console modal.
 - Landscape picker uses a two-column 64 px application list and collapses to one column on narrow widths.
 - Search filters by visible app label/package text and exposes live result count.
-- Existing real Android launcher icons are preserved when provided by the catalog; the picker does not synthesize branded artwork.
+- Existing real Android launcher icons are preserved when already supplied by the catalog; generic launcher candidates remain metadata-only until the lazy icon capability is wired through the WebView bridge. The picker does not synthesize branded artwork.
 
 ## Platform implementation
 - `handheld-secondary-v10_4.css` owns presentation only.
