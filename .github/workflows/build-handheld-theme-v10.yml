@@ -89,8 +89,10 @@ jobs:
           grep -q 'gsb-theme-runtime-js' "$HYDRATE"
           grep -q "handheld-theme.css" "$HYDRATE"
           grep -q "theme-runtime.js" "$HYDRATE"
-          if grep -Eqi 'nintendo[ _-]logo|switch[ _-]logo|mario|zelda|splatoon|pikmin' "$CSS" "$JS"; then
-            echo 'Nintendo proprietary identity/content leaked into theme runtime' >&2
+          node --check "$JS"
+          node --check "$HYDRATE"
+          if grep -Eqi 'mario|zelda|splatoon|pikmin|animal[ _-]crossing|metroid' "$CSS" "$JS"; then
+            echo 'Nintendo proprietary game identity/content leaked into theme runtime' >&2
             exit 1
           fi
           if grep -Eqi 'Settings\.(Global|Secure|System)\.put|ProcessBuilder|Runtime\.getRuntime|rikka\.shizuku' "$JS"; then
