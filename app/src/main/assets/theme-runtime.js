@@ -2,7 +2,9 @@
   const STORAGE_KEY = 'gsb.ui.theme.v10';
   const THEMES = new Set(['console', 'handheld']);
   const root = document.documentElement;
+  const shell = document.querySelector('.shell');
   const home = document.querySelector('.homeScene');
+  const stage = document.querySelector('.stage');
   const status = document.querySelector('.status');
   const systemPanel = document.querySelector('.systemScene .rightPanel');
   const brand = document.querySelector('.brand');
@@ -14,7 +16,7 @@
       const value = localStorage.getItem(STORAGE_KEY);
       if (THEMES.has(value)) return value;
     } catch (_) {}
-    // v10 is a handheld-direction prototype; first run intentionally demonstrates it.
+    // v10 is specifically a handheld-direction prototype, so install-over testing sees it first.
     return 'handheld';
   }
 
@@ -52,8 +54,31 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 1500);
   }
 
+  function activeSceneName() {
+    return document.querySelector('.scene.active')?.dataset?.scene || 'home';
+  }
+
   function selectedCard() {
     return document.querySelector('#carousel .gameCard.active');
+  }
+
+  function selectedLaunchButton() {
+    return selectedCard()?.querySelector('.playBtn') || null;
+  }
+
+  function scrollFocusedCard() {
+    if (root.dataset.gsbTheme !== 'handheld' || activeSceneName() !== 'home') return;
+    const card = selectedCard();
+    if (!card) return;
+    try { card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (_) {}
+  }
+
+  function ensureSelectedTitle() {
+    if (!home || document.getElementById('hhSelectedTitle')) return;
+    const el = document.createElement('div');
+    el.className = 'hhSelectedTitle';
+    el.id = 'hhSelectedTitle';
+    home.appendChild(el);
   }
 
   function syncSelectedTitle() {
@@ -63,14 +88,7 @@
     const title = card?.querySelector('.cardInfo b')?.textContent?.trim() || 'Game Star Box';
     const running = card?.dataset?.session === 'RUNNING' || card?.dataset?.session === 'SUSPENDED';
     out.innerHTML = `<small>${running ? '●' : '■'}</small>${title}`;
-  }
-
-  function ensureSelectedTitle() {
-    if (document.getElementById('hhSelectedTitle')) return;
-    const el = document.createElement('div');
-    el.className = 'hhSelectedTitle';
-    el.id = 'hhSelectedTitle';
-    document.querySelector('.shell')?.appendChild(el);
+    scrollFocusedCard();
   }
 
   function ensureClock() {
@@ -110,12 +128,12 @@
   const dockItems = [
     ['▦', '游戏库', () => showScene('library')],
     ['◇', '电竞', () => showScene('esports')],
-    ['▣', '截图', () => toast('截图继续使用系统 / 红魔实体截图方式')],
+    ['▣', '截图', () => toast('截图继续使用 Android / REDMAGIC 系统能力')],
     ['⌁', '控制器', () => showScene('system')],
     ['◎', '控制台', () => quickMenu()],
     ['◐', '主题', () => toggleTheme(), 'theme'],
     ['⚙', '系统', () => showScene('system')],
-    ['◌', '休眠', () => toast('休眠交给 Android / REDMAGIC 系统管理')]
+    ['◌', '休眠', () => toast('休眠继续交给 Android / REDMAGIC 系统管理')]
   ];
 
   function ensureDock() {
@@ -131,7 +149,12 @@
       button.dataset.label = label;
       button.setAttribute('aria-label', label);
       button.textContent = glyph;
-      button.onclick = () => { dockFocus = [...dock.children].indexOf(button); action(); buzz('tick'); syncDockFocus(); };
+      button.onclick = () => {
+        dockFocus = [...dock.children].indexOf(button);
+        action();
+        buzz('tick');
+        syncDockFocus();
+      };
       dock.appendChild(button);
     }
     home.appendChild(dock);
@@ -140,15 +163,6 @@
   function syncDockFocus() {
     const buttons = [...document.querySelectorAll('.hhDockBtn')];
     buttons.forEach((b, i) => b.classList.toggle('active', i === dockFocus));
-  }
-
-  function ensureProfileStrip() {
-    if (document.getElementById('hhProfileStrip')) return;
-    const strip = document.createElement('div');
-    strip.id = 'hhProfileStrip';
-    strip.className = 'hhProfileStrip';
-    strip.innerHTML = '<div class="hhUsers"><span class="hhAvatar">GS</span></div><span>HANDHELD HOME</span>';
-    document.querySelector('.stage')?.appendChild(strip);
   }
 
   function syncLabels(theme) {
@@ -165,6 +179,18 @@
       : '大幅卡片 · 多层信息 · 大屏优先';
   }
 
+  function syncHomeChrome() {
+    const isHandheldHome = root.dataset.gsbTheme === 'handheld' && activeSceneName() === 'home';
+    const title = document.getElementById('hhSelectedTitle');
+    const dock = document.getElementById('hhDock');
+    if (title) title.hidden = !isHandheldHome;
+    if (dock) dock.hidden = !isHandheldHome;
+    if (!isHandheldHome) {
+      dockFocus = -1;
+      syncDockFocus();
+    }
+  }
+
   function applyTheme(theme, persist = true) {
     if (!THEMES.has(theme)) theme = 'console';
     root.dataset.gsbTheme = theme;
@@ -175,6 +201,7 @@
     syncDockFocus();
     syncLabels(theme);
     syncSelectedTitle();
+    syncHomeChrome();
     try { document.dispatchEvent(new CustomEvent('gsb-theme-change', { detail: { theme } })); } catch (_) {}
     buzz('tick');
   }
@@ -183,14 +210,8 @@
     applyTheme(root.dataset.gsbTheme === 'handheld' ? 'console' : 'handheld');
   }
 
-  function activeSceneName() {
-    return document.querySelector('.scene.active')?.dataset?.scene || 'home';
-  }
-
   function launchSelected() {
-    const card = selectedCard();
-    const button = card?.querySelector('.playBtn');
-    if (button) button.click();
+    selectedLaunchButton()?.click();
   }
 
   ensureSelectedTitle();
@@ -198,61 +219,101 @@
   ensureThemeToggle();
   ensureSystemSetting();
   ensureDock();
-  ensureProfileStrip();
   applyTheme(readTheme(), false);
 
-  // Keep the handheld title synchronized with game-library/session mutations.
   const carousel = document.getElementById('carousel');
   if (carousel && window.MutationObserver) {
-    new MutationObserver(syncSelectedTitle).observe(carousel, {
-      subtree:true, childList:true, characterData:true, attributes:true,
+    new MutationObserver(() => {
+      syncSelectedTitle();
+      syncHomeChrome();
+    }).observe(carousel, {
+      subtree:true,
+      childList:true,
+      characterData:true,
+      attributes:true,
       attributeFilter:['class','data-session','data-package-name']
     });
   }
+
+  // Scenes are switched by the existing console runtime. Observe their active classes so handheld
+  // chrome cannot leak over Library / Esports / System.
+  if (stage && window.MutationObserver) {
+    new MutationObserver(() => {
+      syncHomeChrome();
+      syncSelectedTitle();
+    }).observe(stage, { subtree:true, attributes:true, attributeFilter:['class'] });
+  }
+
   document.addEventListener('gsb-session-state', syncSelectedTitle);
 
-  // In handheld mode the device behaves as a HOME menu: Down enters the system dock,
-  // Up returns to the software row, B returns to HOME from secondary surfaces.
   window.addEventListener('keydown', e => {
     if (root.dataset.gsbTheme !== 'handheld') return;
     const key = e.key.toLowerCase();
     const scene = activeSceneName();
+
     if ((e.key === 'Escape' || key === 'b') && scene !== 'home') {
-      showScene('home'); dockFocus = -1; syncDockFocus(); buzz('tick');
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+      showScene('home');
+      dockFocus = -1;
+      syncDockFocus();
+      buzz('tick');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
     if (scene !== 'home') return;
+
     const buttons = [...document.querySelectorAll('.hhDockBtn')];
     if (e.key === 'ArrowDown') {
       dockFocus = dockFocus < 0 ? 0 : dockFocus;
-      syncDockFocus(); buttons[dockFocus]?.focus();
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+      syncDockFocus();
+      buttons[dockFocus]?.focus();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
-    if (e.key === 'ArrowUp' && dockFocus >= 0) {
-      dockFocus = -1; syncDockFocus(); selectedCard()?.focus?.();
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+    if (e.key === 'ArrowUp') {
+      if (dockFocus >= 0) {
+        dockFocus = -1;
+        syncDockFocus();
+        selectedCard()?.focus?.();
+      }
+      // HOME's software rail has nothing above it; prevent legacy vertical tab cycling.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
     if (dockFocus >= 0 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       dockFocus = (dockFocus + (e.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
-      syncDockFocus(); buttons[dockFocus]?.focus(); buzz('tick');
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+      syncDockFocus();
+      buttons[dockFocus]?.focus();
+      buzz('tick');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
     if ((e.key === 'Enter' || key === 'a') && dockFocus >= 0) {
       buttons[dockFocus]?.click();
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
     if ((e.key === 'Enter' || key === 'a') && dockFocus < 0) {
       launchSelected();
-      e.preventDefault(); e.stopImmediatePropagation(); return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
     if (key === 't') {
-      toggleTheme(); e.preventDefault(); e.stopImmediatePropagation();
+      toggleTheme();
+      e.preventDefault();
+      e.stopImmediatePropagation();
     }
   }, true);
 
-  // Touching an already-selected square launches it; touching another square only moves focus.
+  // Touch: first tap moves focus; a second tap on the focused square launches through the existing
+  // typed GSBGames launch button. We do not duplicate package/session logic here.
   document.addEventListener('click', e => {
-    if (root.dataset.gsbTheme !== 'handheld') return;
+    if (root.dataset.gsbTheme !== 'handheld' || activeSceneName() !== 'home') return;
     const card = e.target?.closest?.('#carousel .gameCard');
     if (!card || e.target?.closest?.('.playBtn')) return;
     const wasActive = card.classList.contains('active');
