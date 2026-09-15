@@ -93,9 +93,11 @@
     injectStylesheetOnce('gsb-scroll-runtime-css', 'scroll-runtime.css');
     injectStylesheetOnce('gsb-handheld-theme-css', 'handheld-theme.css');
     injectStylesheetOnce('gsb-handheld-theme-polish-css', 'handheld-theme-polish-v10_3.css');
+    injectStylesheetOnce('gsb-handheld-secondary-css', 'handheld-secondary-v10_4.css');
     await injectScript('gsb-gesture-runtime-js', 'gesture-runtime.js');
     await injectScript('gsb-game-library-js', 'game-library.js');
     await injectScript('gsb-theme-runtime-js', 'theme-runtime.js');
+    await injectScript('gsb-handheld-secondary-js', 'handheld-secondary-v10_4.js');
     await injectScript('gsb-session-runtime-js', 'session-runtime.js');
     await injectScript('gsb-quick-menu-runtime-js', 'quick-menu-runtime.js');
     await twoFrames();
