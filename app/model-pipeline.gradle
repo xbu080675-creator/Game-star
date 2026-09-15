@@ -1,10 +1,10 @@
 import groovy.json.JsonSlurper
 
-// Build-time validation for the Hardware Playground v8 high-render model pack.
+// Build-time validation for the Hardware Playground high-render model pack.
 // The Android runtime repeats the critical checks because APK contents are the final authority.
 tasks.register('validateHardwareModelPack') {
     group = 'verification'
-    description = 'Validates the v8 high-render model manifest and atomic fallback contract.'
+    description = 'Validates the high-render model manifest, physical-event contract and atomic fallback rules.'
 
     doLast {
         File assetRoot = file('src/main/assets')
@@ -55,11 +55,55 @@ tasks.register('validateHardwareModelPack') {
             }
         }
 
+        def shots = manifest.shotContract
+        if (shots?.version != 2) {
+            throw new GradleException('GSB-MODEL-SHOT-CONTRACT-VERSION-INVALID')
+        }
+        Set<String> expectedEvents = [
+                'SHOULDER_LEFT_FOCUS',
+                'SHOULDER_RIGHT_FOCUS',
+                'MOTION_TILT',
+                'GLASS_REVEAL',
+                'DETENT_STEP',
+                'RATCHET_TOOTH',
+                'LATCH_RELEASE',
+                'THERMAL_SPINUP',
+                'IGNITION'
+        ] as LinkedHashSet<String>
+        Set<String> supportedModes = new LinkedHashSet<>(shots.supportedModes ?: [])
+        Set<String> requiredEvents = new LinkedHashSet<>(shots.requiredEventIds ?: [])
+        if (requiredEvents != expectedEvents) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-REQUIRED-SET-INVALID')
+        }
+        if (!(shots.events instanceof List) || shots.events.size() != expectedEvents.size()) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-COUNT-INVALID')
+        }
+        Set<String> declaredEvents = new LinkedHashSet<>()
+        shots.events.each { event ->
+            String id = event.id ?: ''
+            String mode = event.preferredMode ?: ''
+            String driver = event.driver ?: ''
+            String sourceObject = event.sourceObject ?: ''
+            if (!expectedEvents.contains(id) || !declaredEvents.add(id)) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-ID-INVALID:${id}")
+            }
+            if (!supportedModes.contains(mode)) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-MODE-INVALID:${id}")
+            }
+            if (!driver || !sourceObject) {
+                throw new GradleException("GSB-MODEL-PHYSICAL-EVENT-BINDING-INCOMPLETE:${id}")
+            }
+        }
+        if (declaredEvents != expectedEvents) {
+            throw new GradleException('GSB-MODEL-PHYSICAL-EVENT-DECLARED-SET-INVALID')
+        }
+
         if (!productionReady) {
             logger.lifecycle('[GSB-MODEL] production render pack intentionally disabled; v7 fallback remains authoritative')
         } else {
             logger.lifecycle('[GSB-MODEL] production render pack validated: ' + ids.join(', '))
         }
+        logger.lifecycle('[GSB-MODEL] physical event scene contract validated: ' + declaredEvents.join(', '))
     }
 }
 
