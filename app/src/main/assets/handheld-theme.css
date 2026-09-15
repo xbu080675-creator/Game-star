@@ -1,0 +1,196 @@
+/* Game Star Box handheld theme.
+ * Design intent: console-grade restraint with a handheld-first information hierarchy.
+ * No Nintendo logos, proprietary icons, artwork or trademarked layout assets are bundled here.
+ */
+:root[data-gsb-theme="handheld"]{
+  --hh-bg:#1b1b1d;
+  --hh-panel:#242426;
+  --hh-panel2:#2d2d30;
+  --hh-text:#f6f6f7;
+  --hh-muted:#a9aaad;
+  --hh-blue:#48a8ff;
+  --hh-line:rgba(255,255,255,.12);
+}
+
+:root[data-gsb-theme="handheld"] body,
+:root[data-gsb-theme="handheld"] .shell{
+  background:var(--hh-bg);
+  color:var(--hh-text);
+}
+:root[data-gsb-theme="handheld"] .shell:after,
+:root[data-gsb-theme="handheld"] .gameBackdrop{display:none!important}
+
+/* Top chrome becomes status-only. */
+:root[data-gsb-theme="handheld"] .topbar{
+  height:58px;
+  padding:0 28px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+:root[data-gsb-theme="handheld"] .brand{gap:10px}
+:root[data-gsb-theme="handheld"] .brand .mark{
+  width:32px;height:32px;border-radius:50%;clip-path:none;
+  border:2px solid rgba(255,255,255,.26);background:#303034;
+  font-size:9px;letter-spacing:.02em;
+}
+:root[data-gsb-theme="handheld"] .brand b{font-size:9px;letter-spacing:.12em}
+:root[data-gsb-theme="handheld"] .brand small{font-size:6px;color:#8f9094;letter-spacing:.11em}
+:root[data-gsb-theme="handheld"] .tabs{display:none!important}
+:root[data-gsb-theme="handheld"] .status{grid-column:2;gap:13px;color:#e2e2e4;font-size:9px}
+:root[data-gsb-theme="handheld"] .status .online{color:#e2e2e4}
+:root[data-gsb-theme="handheld"] .statusDot{width:5px;height:5px;box-shadow:none;background:#67db92}
+
+.gsbThemeToggle{
+  height:28px;padding:0 10px;border-radius:15px;
+  border:1px solid rgba(198,224,243,.2);background:rgba(18,31,40,.75);
+  color:#dfe8ed;font-size:7px;letter-spacing:.08em;white-space:nowrap;
+}
+:root[data-gsb-theme="handheld"] .gsbThemeToggle{
+  border-color:rgba(255,255,255,.16);background:#2b2b2e;color:#f4f4f5;
+}
+
+:root[data-gsb-theme="handheld"] .stage{height:calc(100vh - 92px)}
+:root[data-gsb-theme="handheld"] .scene{padding:0 0 8px}
+:root[data-gsb-theme="handheld"] .scene:not(.homeScene){padding:8px 26px 14px}
+
+/* HOME: selected title, square software rail, system dock. */
+:root[data-gsb-theme="handheld"] .homeScene{
+  display:grid;
+  grid-template-rows:34px minmax(190px,1fr) 86px;
+  gap:0;
+  padding-top:4px;
+  overflow:hidden!important;
+}
+:root[data-gsb-theme="handheld"] .homeScene>.rows{display:none!important}
+:root[data-gsb-theme="handheld"] .heroWrap{
+  grid-row:2;overflow:visible;display:flex;align-items:center;
+  padding:0 0 0 6.5vw;
+}
+:root[data-gsb-theme="handheld"] .heroAura{display:none}
+:root[data-gsb-theme="handheld"] .carousel{
+  height:auto;align-items:center;gap:12px;overflow:visible;padding:0 5vw 0 0;
+}
+:root[data-gsb-theme="handheld"] .gameCard,
+:root[data-gsb-theme="handheld"] .gameCard.active{
+  flex:0 0 clamp(134px,19vw,222px);
+  width:clamp(134px,19vw,222px);
+  aspect-ratio:1/1;
+  border-radius:9px;
+  border:3px solid transparent;
+  background:#29292c;
+  box-shadow:0 8px 22px rgba(0,0,0,.22);
+  filter:none;
+  transform:none;
+  overflow:visible;
+}
+:root[data-gsb-theme="handheld"] .gameCard.active{
+  border-color:var(--hh-blue);
+  transform:translateY(-4px) scale(1.025);
+  box-shadow:0 0 0 3px rgba(72,168,255,.15),0 10px 24px rgba(0,0,0,.28);
+}
+:root[data-gsb-theme="handheld"] .gameCard .art{
+  inset:0;border-radius:6px;overflow:hidden;transform:none!important;background-color:#242426;
+}
+:root[data-gsb-theme="handheld"] .gameCard .art:after{display:none}
+:root[data-gsb-theme="handheld"] .gameCard .cardTop,
+:root[data-gsb-theme="handheld"] .gameCard .playBtn{display:none!important}
+:root[data-gsb-theme="handheld"] .gameCard .cardInfo{
+  left:0;right:0;bottom:-28px;max-width:none!important;text-shadow:none;
+  opacity:0;transition:opacity .14s ease;
+}
+:root[data-gsb-theme="handheld"] .gameCard.active .cardInfo{left:0;bottom:-28px;opacity:1;max-width:none}
+:root[data-gsb-theme="handheld"] .gameCard .cardInfo b,
+:root[data-gsb-theme="handheld"] .gameCard.active .cardInfo b{
+  font-size:10px;line-height:1.2;letter-spacing:0;color:#f5f5f6;text-align:left;
+}
+:root[data-gsb-theme="handheld"] .gameCard .cardInfo small{display:none}
+
+.hhSelectedTitle{
+  display:none;position:absolute;z-index:15;left:6.5vw;top:64px;
+  font-size:12px;font-weight:650;letter-spacing:.01em;color:#f4f4f5;
+}
+.hhSelectedTitle small{margin-right:7px;color:var(--hh-blue);font-size:9px}
+:root[data-gsb-theme="handheld"] .hhSelectedTitle{display:block}
+
+.hhProfileStrip{display:none}
+:root[data-gsb-theme="handheld"] .hhProfileStrip{
+  display:flex;position:absolute;left:28px;right:28px;top:4px;height:30px;
+  align-items:center;justify-content:space-between;pointer-events:none;color:#a9aaad;font-size:7px;
+}
+.hhProfileStrip .hhUsers{display:flex;gap:6px;align-items:center}
+.hhAvatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#353538;border:1px solid #55565a;color:#fff;font-size:7px}
+.hhClock{font-size:9px;color:#eeeef0;letter-spacing:.04em}
+
+.hhDock{display:none}
+:root[data-gsb-theme="handheld"] .hhDock{
+  grid-row:3;align-self:center;justify-self:center;
+  display:flex;align-items:center;gap:7px;
+  min-height:58px;padding:7px 12px;border-radius:30px;
+  background:#2a2a2d;border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+.hhDockBtn{
+  width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:#9da0a5;
+  display:grid;place-items:center;position:relative;font-size:15px;transition:.13s ease;
+}
+.hhDockBtn:after{
+  content:attr(data-label);position:absolute;left:50%;top:49px;transform:translateX(-50%);
+  font-size:6px;white-space:nowrap;color:#a7a8ac;opacity:0;pointer-events:none;
+}
+.hhDockBtn:focus,.hhDockBtn.active,.hhDockBtn:hover{
+  color:#fff;background:#37373b;box-shadow:0 0 0 2px var(--hh-blue);
+}
+.hhDockBtn:focus:after,.hhDockBtn.active:after,.hhDockBtn:hover:after{opacity:1}
+.hhDockBtn.theme{color:#62b7ff}
+
+/* Handheld variants of secondary scenes: flatter, less PC-dashboard-like. */
+:root[data-gsb-theme="handheld"] .libraryScene{
+  grid-template-columns:150px minmax(0,1fr);gap:18px;background:#1b1b1d;
+}
+:root[data-gsb-theme="handheld"] .sideMenu{border-right-color:rgba(255,255,255,.08)}
+:root[data-gsb-theme="handheld"] .sideItem.active{background:#303034;border-left-color:var(--hh-blue)}
+:root[data-gsb-theme="handheld"] .coverGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+:root[data-gsb-theme="handheld"] .coverTile{
+  aspect-ratio:1;border-radius:8px;background:#29292c!important;border-color:rgba(255,255,255,.08);
+}
+:root[data-gsb-theme="handheld"] .coverTile:hover{border-color:var(--hh-blue);transform:translateY(-2px)}
+:root[data-gsb-theme="handheld"] .featurePanel,
+:root[data-gsb-theme="handheld"] .rightPanel{
+  background:#242426;border-color:rgba(255,255,255,.08);border-radius:12px;
+}
+:root[data-gsb-theme="handheld"] .switch,
+:root[data-gsb-theme="handheld"] .qBtn{
+  border-radius:13px;background:#303034;border-color:#49494d;color:#d7d7da;
+}
+:root[data-gsb-theme="handheld"] .switch.on,
+:root[data-gsb-theme="handheld"] .qBtn.on{background:#163c2d;border-color:#3a916a;color:#bff2d7}
+
+:root[data-gsb-theme="handheld"] .footer{
+  height:34px;padding:0 26px;background:#1b1b1d;border-top:0;color:#aaa9ad;
+}
+:root[data-gsb-theme="handheld"] .key em{border:0;border-radius:50%;background:#ececef;color:#202023;font-weight:800}
+:root[data-gsb-theme="handheld"] .hint{color:#727378}
+:root[data-gsb-theme="handheld"] .quickPanel{
+  background:#242426;border-left-color:rgba(255,255,255,.12);border-radius:20px 0 0 20px;
+}
+
+.hhToast{
+  position:fixed;z-index:120;left:50%;bottom:48px;transform:translate(-50%,12px);
+  padding:9px 14px;border-radius:18px;background:rgba(35,35,38,.96);color:#f5f5f6;
+  border:1px solid rgba(255,255,255,.12);font-size:8px;opacity:0;pointer-events:none;transition:.18s ease;
+}
+.hhToast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-height:520px){
+  :root[data-gsb-theme="handheld"] .topbar{height:48px}
+  :root[data-gsb-theme="handheld"] .stage{height:calc(100vh - 80px)}
+  :root[data-gsb-theme="handheld"] .homeScene{grid-template-rows:25px minmax(156px,1fr) 68px}
+  :root[data-gsb-theme="handheld"] .gameCard,
+  :root[data-gsb-theme="handheld"] .gameCard.active{flex-basis:clamp(112px,18vw,170px);width:clamp(112px,18vw,170px)}
+  :root[data-gsb-theme="handheld"] .hhDock{min-height:50px;padding:5px 10px}
+  .hhDockBtn{width:38px;height:38px;font-size:13px}
+  .hhSelectedTitle{top:52px}
+}
