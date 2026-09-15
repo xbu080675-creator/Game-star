@@ -1,0 +1,139 @@
+name: Build Thermal Rotor Fix v10.1
+
+on:
+  push:
+    branches: [ feature/shoulder-ignition-boot ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GSB_DEV_KEYSTORE_B64: ${{ secrets.GSB_DEV_KEYSTORE_B64 }}
+      GSB_DEV_STORE_PASSWORD: ${{ secrets.GSB_DEV_STORE_PASSWORD }}
+      GSB_DEV_KEY_PASSWORD: ${{ secrets.GSB_DEV_KEY_PASSWORD }}
+      GSB_DEV_KEY_ALIAS: ${{ secrets.GSB_DEV_KEY_ALIAS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Use runner Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore fixed DEV signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GSB_DEV_KEYSTORE_B64"
+          test -n "$GSB_DEV_STORE_PASSWORD"
+          test -n "$GSB_DEV_KEY_PASSWORD"
+          test -n "$GSB_DEV_KEY_ALIAS"
+          printf '%s' "$GSB_DEV_KEYSTORE_B64" | tr -d '\r\n\t ' | base64 -d > "$RUNNER_TEMP/gsb-dev.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/gsb-dev.keystore" -storepass "$GSB_DEV_STORE_PASSWORD" -alias "$GSB_DEV_KEY_ALIAS" >/dev/null
+          echo "GSB_DEV_KEYSTORE=$RUNNER_TEMP/gsb-dev.keystore" >> "$GITHUB_ENV"
+
+      - name: Fetch fixed CC0 menu music
+        shell: bash
+        run: |
+          set -euo pipefail
+          MUSIC_URL='https://opengameart.org/sites/default/files/spacelifeNo14.ogg'
+          MUSIC_SHA256='64ba0b12ee09c106bca11531010534df282f3474a88fb1923d55b3de469898d4'
+          MUSIC_OUT='app/src/main/assets/menu_bgm.ogg'
+          mkdir -p app/src/main/assets
+          curl -fL --retry 4 --retry-delay 2 --retry-all-errors "$MUSIC_URL" -o "$MUSIC_OUT"
+          echo "$MUSIC_SHA256  $MUSIC_OUT" | sha256sum -c -
+
+      - name: Guard Thermal rotor interaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          PAGE='app/src/main/assets/shoulder-boot.html'
+          MIGRATION='app/src/main/java/com/xbu/esportscenter/privileged/RedMagicShoulderBootstrapProvider.java'
+          DOC='docs/THERMAL_ROTOR_INERTIA_FIX_0.4.27.md'
+          test -f "$PAGE" -a -f "$MIGRATION" -a -f "$DOC"
+          grep -q 'setPointerCapture' "$PAGE"
+          grep -q 'releasePointerCapture' "$PAGE"
+          grep -q 'requestAnimationFrame(stepFan)' "$PAGE"
+          grep -q 'fanVelocity' "$PAGE"
+          grep -q 'airflowEnergy' "$PAGE"
+          grep -q 'airflowWork' "$PAGE"
+          grep -q 'hardware_playground_thermal_rotor_fix_migration_0427_v10_1' "$MIGRATION"
+          if grep -q 'fanDegrees>660' "$PAGE"; then
+            echo 'Legacy raw-angle Thermal completion gate survived' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          page = Path('app/src/main/assets/shoulder-boot.html').read_text()
+          script = page.split('<script>',1)[1].split('</script>',1)[0]
+          Path('/tmp/shoulder-boot.js').write_text(script)
+          PY
+          node --check /tmp/shoulder-boot.js
+
+      - name: Guard Core playground gate regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          GATE='app/src/main/java/com/xbu/esportscenter/core/boot/IgnitionGate.java'
+          SHOULDER='app/src/main/java/com/xbu/esportscenter/core/boot/ShoulderBootStateMachine.java'
+          grep -q 'hardwareReady && playgroundReady && provisioningReady' "$GATE"
+          grep -q 'freshBothRequired' "$SHOULDER"
+          if grep -R -Eqi 'android\.|rikka\.shizuku|Settings\.|ProcessBuilder|Runtime\.getRuntime|/system/bin|/sys/' app/src/main/java/com/xbu/esportscenter/core; then
+            echo 'Platform API leaked into Core' >&2
+            exit 1
+          fi
+
+      - name: Validate model event contract
+        run: gradle :app:validateHardwareModelPack --stacktrace
+
+      - name: Run Core unit tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+
+      - name: Compile signed thermal-fix APK
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Stage artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          APK='out/Game-Star-Box-0.4.27-thermal-rotor-fix-v10.1.apk'
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          unzip -p "$APK" assets/shoulder-boot.html | grep -q 'setPointerCapture'
+          unzip -p "$APK" assets/shoulder-boot.html | grep -q 'airflowWork'
+          unzip -l "$APK" | grep 'assets/theme-runtime.js'
+          unzip -l "$APK" | grep 'assets/hardware-model/model-manifest.json'
+          sha256sum "$APK"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Game-Star-Box-0.4.27-thermal-rotor-fix-v10.1
+          path: out/Game-Star-Box-0.4.27-thermal-rotor-fix-v10.1.apk
+          if-no-files-found: error
+          retention-days: 3
